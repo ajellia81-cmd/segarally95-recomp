@@ -717,7 +717,11 @@ int sys24_viewer_poll_events(void)
             }
             if (in_test && ev.key.keysym.sym == SDLK_UP && !ev.key.repeat)
                 model2_io_in0_set_mask(MODEL2_IO_IN0_TEST, pressed);
-            if (ev.key.keysym.sym == SDLK_v && !ev.key.repeat)
+            /* IN0 bit5 is the view button. io_poll moves it to edge bit7
+             * of 0x202064; cam_bind toggles 0x2140c0 between chase
+             * (0x1FDC0) and in-car (0x1FF60). */
+            if ((ev.key.keysym.sym == SDLK_v || ev.key.keysym.sym == SDLK_x)
+                && !ev.key.repeat)
                 model2_io_in0_set_mask(MODEL2_IO_IN0_VR, pressed);
 
             /*

@@ -1,9 +1,10 @@
 /* Alt chase camera @ 0x1FF60 — staged callx 0x5BEF60.
  *
  * Installed by cam_rebind when 0x2140c0 != 0. Differs from chase @ 0x1FDC0:
- * builds an eye from blend/0x20ac74, emits yaw/pitch, then 0x26 →
- * geo_view_matrix_row_swap_upload @ 0x33A50, and sets 0x2139d8=1 so
- * object_pen runs again.
+ * cockpit 0x27(0, −1.3, 0x20ac74+5), 0x29/0x2a, then 0x27(−xyz). The
+ * row-swap @ 0x33A50 and the following 0x22/0x2c only produce the focus
+ * point; 0x21 @ 0x20290 restores the cockpit view before the latch.
+ * Sets 0x2139d8=1 so object_pen runs again.
  *
  * source: disasm/maincpu/maincpu_01ff60_37c.asm */
 // @rom 0x1ff60 +0x37c game_start_race_cam_chase_alt
@@ -159,11 +160,12 @@ void game_start_race_cam_chase_alt(u32 arg0, u32 arg1, u32 arg2)
     }
 
     /*
-     * Disasm @ 0x20290: 0x21 pop after the 0x0B row-swap upload. Latch the
-     * composed view before pop — same host contract as chase @ 0x1FDC0 /
-     * desert after 0x27 (GEO already received 0x0B from row_swap_upload).
+     * @0x20204 push, 0x22 of the row-swapped buffer, 0x2c of the ROM
+     * point, then @0x20290 0x21 pop. The swapped matrix is only current
+     * so 0x2c can write the focus; pop restores the in-car view built by
+     * 0x27/0x29/0x2a/0x27. Latch that matrix, after the focus stores —
+     * latch reads 0x20220c.
      */
-    model2_hw_latch_view_matrix();
     i960_mmio_write_u32(0x884000, 0x10802121u);
     /* Restore object_pen gate — chase clears it; alt sets it back. */
     i960_st_u32(I960_WORKRAM, 0x2139d8, 0, 1u);
@@ -174,6 +176,7 @@ void game_start_race_cam_chase_alt(u32 arg0, u32 arg1, u32 arg2)
     i960_st_u32(I960_WORKRAM, 0x202200, 0, *(u32 *)(fp + 0x50));
     i960_st_u32(I960_WORKRAM, 0x202204, 0, *(u32 *)(fp + 0x54));
     i960_st_u32(I960_WORKRAM, 0x202208, 0, *(u32 *)(fp + 0x58));
+    model2_hw_latch_view_matrix();
 
     game_start_race_cam_rebind(0, 0, 0);
 

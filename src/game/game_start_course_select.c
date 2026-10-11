@@ -69,8 +69,16 @@ void game_start_course_select(u32 arg0, u32 arg1, u32 arg2)
     i960_st_u16(I960_WORKRAM, 0x20b914, 0, 0);
     i960_st_u16(I960_WORKRAM, 0x20b918, 0, 0);
 
-    /* @0x1639C-0x163AC: bit7 set && bit4 clear -> clear scroll-hold flag. */
-    if ((misc & 0x80u) != 0u) {
+    /*
+     * @0x1639C bbc 7 → st; @0x163A8 bbs 4 → skip the st.
+     * 0x146A8 does mov 0,g14 before bx, so the store is 0 and the
+     * progress bar (@ 0x1EDB0, only when this word is 0) is enabled.
+     * The word stays 1 only when remapped IN0 bit7 and bit4 are both
+     * set (VR and START).
+     */
+    if ((misc & 0x80u) == 0u) {
+        i960_st_u32(I960_WORKRAM, 0x2139d4, 0, 0);
+    } else {
         misc = i960_ld_u8(I960_WORKRAM, 0x20205c, 0);
         if ((misc & 0x10u) == 0u)
             i960_st_u32(I960_WORKRAM, 0x2139d4, 0, 0);

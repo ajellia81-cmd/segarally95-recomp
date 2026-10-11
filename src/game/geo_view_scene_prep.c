@@ -299,8 +299,16 @@ void * geo_view_scene_prep(void *arg0, void *arg1, void *arg2)
             else
                 projected = sqrt(projected);
             {
-                double p0 = i960_u32_to_f64(i960_ld_u32(I960_ABS, record, 0x50));
-                double p1 = i960_u32_to_f64(i960_ld_u32(I960_ABS, record, 0x54));
+                /*
+                 * @0x34754 / @0x3475C: ld 0x50(r13) / 0x54(r13) → fp1 / fp2.
+                 * r13 is the cam node (1000 and ~1144), not the 0x2138dc
+                 * plane record. The plane record sits 0x50 bytes before the
+                 * next corner's words, so reading it here scaled the inward
+                 * push from roadside data and let the follow pose enter the
+                 * shoulder meshes.
+                 */
+                double p0 = i960_u32_to_f64(i960_ld_u32(I960_ABS, node_va, 0x50));
+                double p1 = i960_u32_to_f64(i960_ld_u32(I960_ABS, node_va, 0x54));
                 double weight = i960_u32_to_f64(
                     i960_ld_u32(I960_ABS, out_va + 0x18u, 0));
 

@@ -10,7 +10,6 @@
 #include "i960_fp.h"
 #include "i960_mem.h"
 #include "i960_host.h"
-#include "model2_rom.h"
 
 #include "lift_syms.h"
 
@@ -49,9 +48,15 @@ void game_start_race_hud_progress(u32 arg0, u32 arg1, u32 arg2)
         return;
     }
 
+    /*
+     * @0x1EDE0–0x1EE04: course*3 indexes 0x5dcac8, then ld (ptr).
+     * The pointer is a main_data address (desert 0x02003e00, count 300).
+     * A workram-mirror load of that address is 0, so cells stays 0 and
+     * the 0x20ab44 cache never redraws.
+     */
     course = i960_host_race_course_index();
-    tab = model2_workram_mirror_u32(0x005dcac8u + (course * 3u) * 4u);
-    scale = model2_workram_mirror_u32(tab);
+    tab = i960_ld_u32(I960_WORKRAM, 0x005dcac8u + (course * 3u) * 4u, 0);
+    scale = i960_ld_u32(I960_WORKRAM, tab, 0);
     {
         u32 rows = i960_ld_u32(I960_WORKRAM, 0x2020c4, 0);
         u32 cursor = i960_ld_u32(I960_WORKRAM, 0x2140c4, 0);

@@ -8,7 +8,8 @@
  * Course-select result is 0x20a8c4. --practice never runs that scene, so
  * store the requested course there (desert 0, or I960_HOST_COURSE).
  * Confirm bits match course_select @ 0x16360: 2139cc = (choice>>1)&1,
- * 2139d0 = 1 when choice is 0 or 3. Do not store into 0x214354 after
+ * 2139d0 = 1 when choice is 0 or 3, 2139d4 = 0 (progress bar).
+ * Do not store into 0x214354 after
  * confirm — that cell is still the car class (ROM 0x152DC has no such store).
  *
  * After START, analog rest is 0x80: fov_scale @ 0x395D8 is byte−0x80.
@@ -118,6 +119,12 @@ static void skip_force_practice_flags(void)
     /* course_select confirm @ 0x16360. */
     i960_st_u32(I960_WORKRAM, 0x2139cc, 0, (course >> 1) & 1u);
     i960_st_u32(I960_WORKRAM, 0x2139d0, 0, sel_bit);
+    /*
+     * Confirm tail @ 0x163AC stores 0 into 0x2139d4 (g14 cleared by
+     * 0x146A8) unless VR and START are both held. Skip never holds
+     * both, so the top progress bar is enabled. flags_init left it 1.
+     */
+    i960_st_u32(I960_WORKRAM, 0x2139d4, 0, 0u);
 }
 
 u32 i960_host_race_course_index(void)
