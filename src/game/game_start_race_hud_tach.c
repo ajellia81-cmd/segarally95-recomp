@@ -1,9 +1,9 @@
-/* Race HUD countdown digits @ 0x1E500 — per-frame from hud_frame.
+/* Race HUD tachometer digits @ 0x1E500 — per-frame from hud_frame.
  *
- * ld 0x20b0b0, lda 0x3b(g4), divi by 60, clamp to 99. 0x20b0b0 is the
- * lap-span frame count (seeded from the course bonus table, ticked in
- * lap_tick, refilled at checkpoints). Displayed seconds are
- * (span + 59) / 60. Speed lives in 0x20b0b4 and is the speedo, not this.
+ * Disasm @ 0x1E500–0x1E51C:
+ *   ld 0x20b0b0 → lda 0x3b(g4) → divi 60 → clamp 99.
+ * 0x20b0b0 is the lap-span integer (slot0/1/3); lda 0x3b(g4) is g4+0x3b
+ * (EA add), not a memory load. Prior lift invented a 20b0b4 speed path.
  *
  * Draws/erases tens and ones into batch 0x20ac7c at (0x20aebc, 0x20aec0)
  * when 0x20aeb8 changes.
@@ -38,12 +38,13 @@ void game_start_race_hud_tach(u32 arg0, u32 arg1, u32 arg2)
         logged = 1;
     }
 
-    /* @0x1E500: ld 0x20b0b0; addo 60; lda 0x3b; divi; cmpible r4,99. */
-    {
-        i32 span = (i32)i960_ld_u32(I960_WORKRAM, 0x20b0b0, 0);
-
-        v = (span + 0x3b) / 60;
-    }
+    /*
+     * @0x1E500–0x1E51C: ld 20b0b0 → lda 0x3b(g4) → divi 60 → clamp 99.
+     * divi is signed; unsigned /60u turned negative spans into huge values
+     * that clamped to 99 then jumped when the sign cleared.
+     */
+    v = ((i32)i960_ld_u32(I960_WORKRAM, 0x20b0b0, 0) + 0x3b) / 60;
+    /* @0x1E514–0x1E51C: cmpible r4,99 — upper clamp only (no floor). */
     if (v > 0x63)
         v = 0x63;
 

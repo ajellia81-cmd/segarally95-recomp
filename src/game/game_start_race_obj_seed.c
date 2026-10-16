@@ -20,6 +20,7 @@
 #include <stdio.h>
 
 void game_start_race_obj_seed_cars(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_obj_seed_champ(u32 arg0, u32 arg1, u32 arg2);
 void game_start_race_obj_seed_practice(u32 arg0, u32 arg1, u32 arg2)
 {
     static int logged;
@@ -78,6 +79,6 @@ void game_start_race_obj_seed(u32 arg0, u32 arg1, u32 arg2)
         return;
     }
 
-    /* Non-practice long path @ 0x219F0 — still unlifted. */
-    i960_call_rom(0x219f0);
+    /* Non-practice (championship) long path @ 0x219F0. */
+    game_start_race_obj_seed_champ(0, 0, 0);
 }

@@ -30,6 +30,11 @@ void game_start_race_cam_pose_table(u32 arg0, u32 arg1, u32 arg2)
     /* lda (g4)[g4*2] → *3; shlo 2 → word offset idx*12. */
     idx = (idx + (idx << 1)) << 2;
 
+    /*
+     * Disasm @ 0x21D00 / 0x21D24: ld 0x214354. --practice keeps car class
+     * there; host_race_course_index remaps to 20a8c4 so follow init uses
+     * desert triples, not lake (index 3 / Delta MT).
+     */
     course = i960_host_race_course_index();
     course3 = course + (course << 1);
 

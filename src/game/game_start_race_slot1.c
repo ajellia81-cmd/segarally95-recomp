@@ -6,8 +6,8 @@
  * Even 0x2020a8 (first hit): snapshot 0x20b0b0, clear frame counter
  * 0x2021f4, call 0x1E478(g0=0/1 from 0x20aea8), then 2020a8 += 1 (→odd).
  *
- * Odd 0x2020a8: while 0x2021f4 ≤ 60, lerp 0x20b0b0 toward the snapshot
- * over 60 frames (optionally call 0x26140); past 60, clear 0x20aea8 /
+ * Odd 0x2020a8: while 0x2021f4 ≤ 50, lerp 0x20b0b0 toward the snapshot
+ * (step÷50, half/q÷60); past 60, clear 0x20aea8 /
  * 0x20aeb4, bal 0x1E498, then 2020a8 += 1 (→4).
  *
  * source: disasm/maincpu/maincpu_01cd20_120.asm */
@@ -83,16 +83,19 @@ void game_start_race_slot1(u32 arg0, u32 arg1, u32 arg2)
         }
     } else if ((i32)counter <= 50) {
         /*
-         * @0x1CDB4–0x1CE0C: blend only while counter ≤ 50 (addo 31,19).
-         *   g7 is still 50 (addo 31,19). mulo then divo: step = aea8*counter/50.
-         *   Then g7 = 60. half = span/60. span = step + 0x20aad8.
-         *   q = (step + snap) / 60. if q != half → call 0x26140(g0=0x94).
+         * @0x1CDB4–0x1CE0C: blend only while counter ≤ 50 (addo 31,19 = 50).
+         *   g7 = 50; step = (0x20aea8 * counter) / 50   (@0x1CDE8 divo g7,g4)
+         *   g7 = 60; half = 0x20b0b0 / 60
+         *   0x20b0b0 = step + 0x20aad8
+         *   q = (step + snap) / 60
+         *   if q != half → call 0x26140(g0=0x94)
          */
         u32 aea8 = i960_ld_u32(I960_WORKRAM, 0x20aea8, 0);
         u32 snap = i960_ld_u32(I960_WORKRAM, 0x20aad8, 0);
         u32 cur = i960_ld_u32(I960_WORKRAM, 0x20b0b0, 0);
+        u32 fifty = 50u;
         u32 sixty = 60u;
-        u32 step = (aea8 * counter) / 50u;
+        u32 step = (aea8 * counter) / fifty;
         i32 half = (i32)cur / (i32)sixty;
         u32 blended = step + snap;
         i32 q = (i32)blended / (i32)sixty;

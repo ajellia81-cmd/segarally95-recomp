@@ -205,8 +205,10 @@ void game_start_race_slot3(u32 arg0, u32 arg1, u32 arg2)
                 if ((i32)c4 > (i32)lim) {
                     u32 prev;
 
-                    game_start_race_hud_lap_time(0, 0, 0);
-                    i960_call_rom(0x1c940);
+                    /* @0x1D3EC: g0 = 0x2020c0, then hud + lap_best @ 0x1C940. */
+                    g0 = i960_ld_u32(I960_WORKRAM, 0x2020c0, 0);
+                    game_start_race_hud_lap_time((u32)g0, 0, 0);
+                    game_start_race_lap_best(0, 0, 0);
                     ac98 = i960_ld_u32(I960_WORKRAM, 0x20ac98, 0);
                     prev = ac98;
                     i960_st_u32(I960_WORKRAM, 0x20a760, 0, 1u);
@@ -253,7 +255,7 @@ void game_start_race_slot3(u32 arg0, u32 arg1, u32 arg2)
                     comm_palette_index_call(5);
                     if (i960_ld_u32(I960_WORKRAM, 0x202230, 0) == 1u) {
                         g0 = i960_ld_u32(I960_WORKRAM, 0x2020bc, 0);
-                        i960_call_rom(0x18270);
+                        game_start_race_lap_record((u32)g0, 0, 0);
                     }
                     g14 = 0;
                     i960_st_u32(I960_WORKRAM, 0x20a770, 0, 0u);
@@ -287,21 +289,26 @@ void game_start_race_slot3(u32 arg0, u32 arg1, u32 arg2)
         i960_st_u32(I960_WORKRAM, 0x214120, 0, 2u);
         aeac = aeac - 1u;
         i960_st_u32(I960_WORKRAM, 0x20aeac, 0, aeac);
+        /*
+         * @0x1D58C–0x1D5C4: cmpibe 0,aeac → always st 10 → 2020a8 (slot5).
+         * Else fall through: if |speed| < 0x3fb7b425ed097b42 also advance.
+         * Prior lift nested the store under the speed test, so a moving car
+         * never left the finish window → no slot5 fanfare.
+         */
         if (aeac == 0u) {
+            i960_st_u32(I960_WORKRAM, 0x2020a8, 0, 10u);
+        } else {
             speed = i960_ld_u32(I960_WORKRAM, 0x20b0b4, 0);
             speed &= 0x7fffffffu;
             {
-                /* double 0x3fb7b425ed097b42 */
-                double lim = 0.0;
-                u32 lo = 0xed097b42u;
-                u32 hi = 0x3fb7b425u;
+                double lim;
                 union {
                     u32 w[2];
                     double d;
                 } u;
 
-                u.w[0] = lo;
-                u.w[1] = hi;
+                u.w[0] = 0xed097b42u;
+                u.w[1] = 0x3fb7b425u;
                 lim = u.d;
                 if (!(i960_u32_to_f64(speed) >= lim))
                     i960_st_u32(I960_WORKRAM, 0x2020a8, 0, 10u);

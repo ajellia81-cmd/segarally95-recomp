@@ -67,6 +67,12 @@ void game_start_race_rank_list_seed(u32 arg0, u32 arg1, u32 arg2)
         return;
 
     mode = i960_ld_u32(I960_WORKRAM, 0x202230, 0);
+    /*
+     * Disasm @ 0x47348 / 0x47378: ld 0x214354. Under --practice that cell is
+     * still car class (Delta MT → 3); host_race_course_index remaps to
+     * 20a8c4 so desert practice seeds the desert row/time tables (rows=3,
+     * span≈0xbb8) instead of lake's 2-sector list.
+     */
     course = i960_host_race_course_index();
     view = i960_ld_u8(I960_WORKRAM, 0x20201d, 0);
     view = (view << 5) & (3u << 5);

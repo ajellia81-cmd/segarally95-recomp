@@ -12,6 +12,7 @@ int i960_host_invoke_lifted(u32 rom_addr)
     case 0x0000bee0: attract_credit_stamp_empty((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x0000bfa0: attract_credit_stamp_paid((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x0001b940: attract_hud_setup((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x0001be40: game_start_race_champ_course_advance((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x00032720: attract_logo_cgm_scale_clear((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x00032790: attract_logo_cgm_submit((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x00032f70: attract_logo_dispatch((u32)g0, (u32)g1, (u32)g2); return 1;
@@ -176,6 +177,14 @@ int i960_host_invoke_lifted(u32 rom_addr)
     case 0x00040790: game_start_race_cgm_colorbase_seed((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x0001dd30: game_start_race_cgm_seed((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x000211f0: game_start_race_countdown_prg((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x00020cf0: game_start_race_fanfare_practice_win((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x00020e70: game_start_race_fanfare_practice_dnf((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x00020ff0: game_start_race_fanfare_champ_dnf((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x00020880: game_start_race_fanfare_champ_win_0((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x000207c0: game_start_race_fanfare_champ_win_0_cont((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x00020a50: game_start_race_fanfare_champ_win_2((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x00020990: game_start_race_fanfare_champ_win_2_cont((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x00020bf0: game_start_race_fanfare_champ_win_3((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x00041e70: game_start_race_course_centroid((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x0002bb50: game_start_race_course_obj_draw_21((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x0002b420: game_start_race_course_obj_draw_4((u32)g0, (u32)g1, (u32)g2); return 1;
@@ -236,6 +245,8 @@ int i960_host_invoke_lifted(u32 rom_addr)
     case 0x000219c0: game_start_race_obj_seed((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x000217e0: game_start_race_obj_seed_cars((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x00021918: game_start_race_obj_seed_practice((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x000219f0: game_start_race_obj_seed_champ((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x0002c770: game_start_race_obj_car_attach_champ((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x000231f0: game_start_race_obj_sort_index((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x00022850: game_start_race_obj_span_test((u32)g0, (void *)(uintptr_t)g1, (u32)g2); return 1;
     case 0x000248b0: game_start_race_object_pen_desc((u32)g0, (u32)g1, (u32)g2); return 1;
@@ -249,6 +260,12 @@ int i960_host_invoke_lifted(u32 rom_addr)
     case 0x0001cd20: game_start_race_slot1((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x0001ce30: game_start_race_slot2((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x0001d160: game_start_race_slot3((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x0001d680: game_start_race_slot4((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x0001d8d0: game_start_race_slot5((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x00018270: game_start_race_lap_record((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x0001c940: game_start_race_lap_best((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x0001c7a0: game_start_race_sound_mute((u32)g0, (u32)g1, (u32)g2); return 1;
+    case 0x0001eb88: game_start_race_name_copy((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x0001ca30: game_start_race_sub_dispatch((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x0001c9c0: game_start_race_sub_reset((u32)g0, (u32)g1, (u32)g2); return 1;
     case 0x0001bf50: game_start_race_timer_arm((u32)g0, (u32)g1, (u32)g2); return 1;

@@ -30,11 +30,19 @@ void game_start_race_timer_arm(u32 arg0, u32 arg1, u32 arg2)
 
     phase = i960_ld_u32(I960_WORKRAM, 0x20aab0, 0);
     if (phase == (15u << 4)) {
-        /* @0x1BF60: st g14 → timer (host g14==0 on scene callx path). */
-        g14 = 0;
-        i960_st_u32(I960_WORKRAM, 0x20a560, 0, (u32)g14);
+        /*
+         * @0x1BF60: st g14 → 0x20a560. Do not clear g14 first — solo
+         * select_confirm / phase_0 leave −1 in g14 or in the cell; forcing
+         * 0 made lap_record (@0x182B8 bge) skip ranked inserts.
+         * Host callx may arrive with g14==0 while the cell is still −1:
+         * keep the negative solo marker in that case.
+         */
+        if (!((i32)g14 == 0
+              && (i32)i960_ld_u32(I960_WORKRAM, 0x20a560, 0) < 0))
+            i960_st_u32(I960_WORKRAM, 0x20a560, 0, (u32)g14);
         if (!logged) {
-            lift_log( "lift: race_timer_arm → 0 (20aab0==0xf0)\n");
+            lift_log( "lift: race_timer_arm timer=%d (20aab0==0xf0)\n",
+                      (int)(i32)i960_ld_u32(I960_WORKRAM, 0x20a560, 0));
             fflush(stderr);
             logged = 1;
         }

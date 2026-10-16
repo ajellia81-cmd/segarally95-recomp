@@ -6,7 +6,7 @@
  * then bump 2020a8 so table[3] runs.
  *
  * Phase clock 0x20ab54 is advanced by countdown PRG @ 0x211F0 (via 0x3F9A0)
- * after phase 2 installs it; thresholds are IEEE doubles 30 / 60 / 85.625.
+ * after phase 2 installs it; thresholds are IEEE doubles 30 / 60 / 90.
  *
  * source: disasm/maincpu/maincpu_01ce30_330.asm */
 // @rom 0x1ce30 +0x320 game_start_race_slot2
@@ -106,9 +106,12 @@ static void race_slot2_phase1(void)
         }
     }
 
-    /* @0x1CF64–0x1CFAC: seed countdown span; practice → 166.0f. */
+    /*
+     * @0x1CF64–0x1CF90: cmpibe 1,202230 → 166; else ld 214354;
+     * cmpibne 0 → clear; else 166. Practice always takes 166.
+     */
     if (i960_ld_u32(I960_WORKRAM, 0x202230, 0) == 1u
-        || i960_host_race_course_index() == 0u)
+        || i960_ld_u32(I960_WORKRAM, 0x214354, 0) == 0u)
         i960_st_u32(I960_WORKRAM, 0x20aae0, 0, 0x43260000u); /* 166.0f */
     else
         i960_st_u32(I960_WORKRAM, 0x20aae0, 0, 0u);
@@ -188,8 +191,10 @@ static void race_slot2_phase5(void)
     u32 phase;
     u32 sub;
     u32 course;
+    u32 mode;
+    i32 timer;
 
-    /* @0x1D0A0: ab54 > 85.625 → palette 3 + course cue; advance sub-slot. */
+    /* @0x1D0A0: ab54 > 90.0 → palette 3 + course cue; advance sub-slot. */
     if (!race_slot2_ab54_gt_double_hi(0x40568000u))
         return;
 
@@ -197,13 +202,17 @@ static void race_slot2_phase5(void)
     comm_palette_index_call(3);
     i960_st_u32(I960_WORKRAM, 0x214120, 0, 1u);
 
-    if (i960_ld_u32(I960_WORKRAM, 0x202230, 0) == 0u
-        && (i32)i960_ld_u32(I960_WORKRAM, 0x20a560, 0) < 0) {
-        course = i960_host_race_course_index();
+    /*
+     * @0x1D0E4–0x1D11C: cmpibe 0,202230 → 5bb6e0[214354]; else if
+     * timer>=0 → 5bb700[214354]; else 5bb6e0. Index is raw 214354.
+     */
+    mode = i960_ld_u32(I960_WORKRAM, 0x202230, 0);
+    timer = (i32)i960_ld_u32(I960_WORKRAM, 0x20a560, 0);
+    course = i960_ld_u32(I960_WORKRAM, 0x214354, 0);
+    if (mode == 0u || timer < 0) {
         g0 = model2_workram_mirror_u32(0x5bb6e0u + (course << 2));
         comm_palette_index_call((u32)g0);
     } else {
-        course = i960_host_race_course_index();
         g0 = model2_workram_mirror_u32(0x5bb700u + (course << 2));
         comm_palette_index_call((u32)g0);
     }

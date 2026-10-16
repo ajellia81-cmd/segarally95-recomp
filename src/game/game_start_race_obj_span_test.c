@@ -1,9 +1,11 @@
 /* Object XZ span test @ 0x22850 — used by game_start_race_obj_scan.
  *
- * If (g0>>16)==(g2>>16), TGP 0x2c805959 gets
- * (other−self).x, *0x214360, 0, *0x214364, (other−self).z, *0x214368.
- * The Y delta is cleared before that store. Return 1 when readback > 0.
- * Else shri 16 and return 1 only when other_hi > self_hi.
+ * If (g0>>16)==(g2>>16), submit delta(self,other) through TGP 0x2c805959
+ * with thresholds from 0x214360/364/368 (XZ only: third push is 0, not dy);
+ * return 1 when readback > 0.
+ * Else compare signed high halves (@0x22918–0x22930): shri both, then
+ * cmpible other,self → ret 0; else ret 1. So return 1 iff other_hi > self_hi
+ * (other is ahead on the packed span index).
  *
  * g1/g3 are pointers to xyz floats (self / other).
  *
@@ -33,11 +35,11 @@ void game_start_race_obj_span_test(u32 self_z, void *self_xyz, u32 other_z)
     fp = (uintptr_t)frame;
 
     if (self_hi != other_hi) {
-        /* @0x22920: cmpible other_hi, self_hi → return 0. */
-        i32 a = (i32)other_z >> 16;
-        i32 b = (i32)self_z >> 16;
+        /* @0x22918: shri 16 both; cmpible other,self → 0; else → 1. */
+        i32 other = (i32)other_z >> 16;
+        i32 self = (i32)self_z >> 16;
 
-        g0 = (a > b) ? 1u : 0u;
+        g0 = (other > self) ? 1u : 0u;
         fp = fp_save;
         return;
     }
@@ -48,11 +50,15 @@ void game_start_race_obj_span_test(u32 self_z, void *self_xyz, u32 other_z)
         return;
     }
 
-    /* @0x22868–0x228A8: dx/dz = other−self; dy is overwritten with 0. */
+    /*
+     * @0x22860–0x228F0: delta = other − self. Disasm computes dy into r5 then
+     * `mov 0,r5` before `stl r4,0x40(fp)`, so the 0x44 word pushed is 0 — XZ
+     * only. Push order: dx, 214360, 0, 214364, dz, 214368.
+     */
     dx = i960_u32_to_f64(other[0]) - i960_u32_to_f64(self[0]);
     dz = i960_u32_to_f64(other[2]) - i960_u32_to_f64(self[2]);
 
-    /* TGP 0x2c805959 — dx,*360, 0,*364, dz,*368. */
+    /* TGP 0x2c805959 — firmware @ 0x530 interleaved 3-term dot. */
     i960_mmio_write_u32(0x884000u, 0x2c805959u);
     i960_mmio_write_u32(0x884000u, (u32)i960_f64_to_u32(dx));
     i960_mmio_write_u32(0x884000u, i960_ld_u32(I960_WORKRAM, 0x214360, 0));

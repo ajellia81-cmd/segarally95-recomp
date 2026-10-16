@@ -151,7 +151,7 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
     i960_st_u8(I960_ABS, (u32)g6, 0, (u8)g4);
     g4 = i960_ld_u32(I960_ABS, 0x2020a8, 0);
     r4 = arg0_p + 0x74;
-    if ((i32)g4 == 9)
+    if ((unsigned char)g4 == 9)
         goto L_00034f94;
     {
         scene_local_regs caller_r = save_scene_local_regs();
@@ -516,6 +516,11 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
             u8 *xyz = frame + 0xf0 + (u32)r6;
 
             g1 = i960_ld_u32(I960_WORKRAM, 0x2140c8, 0);
+            /*
+             * Disasm @ 0x356EC: ld 0x214354. Under --practice that cell is
+             * still car class; host_race_course_index remaps to 20a8c4 so
+             * table_index matches the loaded course (desert).
+             */
             g0 = i960_host_race_course_index();
             g3 = 0;
             /*
@@ -829,7 +834,7 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
 
     L_00035c68:
         g4 = i960_ld_u32(I960_WORKRAM, 0x2138c0, 0);
-        if ((i32)g4 != 0)
+        if ((unsigned char)g4 != 0)
             goto L_00035c88;
         g0 = 0x7b;
         {
@@ -849,21 +854,21 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
 
     L_00035c98:
         g4 = g6 & 15;
-        if ((i32)g4 == 6)
+        if ((unsigned char)g4 == 6)
             goto L_00035c60;
         g6 = g6 >> 4;
         g5 = g5 + 0x1;
-        if (3 >= (i32)g5)
+        if (3 >= (signed char)g5)
             goto L_00035c98;
 
     L_00035cac:
         g4 = i960_ld_u32(I960_WORKRAM, 0x21396c, 0);
-        if ((i32)g4 != 0)
+        if ((unsigned char)g4 != 0)
             goto L_00035d00;
-        if ((i32)g7 == 0)
+        if ((unsigned char)g7 == 0)
             goto L_00035ce4;
         g4 = i960_ld_u32(I960_WORKRAM, 0x2142d4, 0);
-        if ((i32)g4 != 0)
+        if ((unsigned char)g4 != 0)
             goto L_00035ce4;
         g10 = 2;
         g11 = 5;
@@ -872,10 +877,10 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
         goto L_00035d00;
 
     L_00035ce4:
-        if ((i32)g7 != 0)
+        if ((unsigned char)g7 != 0)
             goto L_00035d00;
         g4 = i960_ld_u32(I960_WORKRAM, 0x2142d4, 0);
-        if ((i32)g4 != 0) {
+        if ((unsigned char)g4 != 0) {
             g12 = 3;
             i960_st_u32(I960_WORKRAM, 0x2142c8, 0, (u32)g12);
         }
@@ -917,7 +922,7 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
     /* @0x35DC4: if (0x213974 & 12) == 12, half-scale 0x214214/218. */
     g4 = i960_ld_u32(I960_WORKRAM, 0x213974, 0);
     g4 = g4 & 12;
-    if ((i32)g4 == 12) {
+    if ((unsigned char)g4 == 12) {
         g11 = i960_ld_u32(I960_WORKRAM, 0x214214, 0);
         g12 = i960_ld_u32(I960_WORKRAM, 0x214218, 0);
         fp0 = i960_u32_to_f64(g11);
@@ -1295,7 +1300,7 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
         g4 = i960_ld_u32(I960_WORKRAM, 0x2020b4, 0);
         r15 = 0x10802121u;
         i960_mmio_write_u32(0x884000, (u32)r15); /* copro_fifo */;
-        if ((i32)g4 == 0)
+        if ((unsigned char)g4 == 0)
             goto L_000365e8;
         g8 = 0x10002020u;
         g10 = *(u32 *)(fp + 0x1b0);
@@ -1518,7 +1523,7 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
         g1 = 25;
         tile_cursor_seed((u32)g0, (u32)g1);
     g4 = i960_ld_u32(I960_WORKRAM, 0x213974, 0);
-    if ((i32)g4 == 15)
+    if ((unsigned char)g4 == 15)
         goto L_000369b4;
     r15 = *(u32 *)(fp + 0x1f0);
     g4 = *gw32((u32)(uintptr_t)(r15 + 0x4c));
@@ -1590,7 +1595,7 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
         g1 = 26;
         tile_cursor_seed((u32)g0, (u32)g1);
     g4 = i960_ld_u32(I960_WORKRAM, 0x213974, 0);
-    if ((i32)g4 == 15)
+    if ((unsigned char)g4 == 15)
         goto L_00036a5c;
     r14 = *(u32 *)(fp + 0x1f0);
     g5 = r14 + 0x38;
@@ -1653,10 +1658,10 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
         g4 = g4 + 4;
         g4 = g4 & 7;
         g4 = g4 & g9;
-        if ((i32)g4 != 0)
+        if ((unsigned char)g4 != 0)
             goto L_00036b98;
         g4 = i960_ld_u32(I960_WORKRAM, 0x213974, 0);
-        if ((i32)g4 != 0)
+        if ((unsigned char)g4 != 0)
             goto L_00036ac4;
         r4 = 0;
         goto L_00036afc;
@@ -1672,7 +1677,7 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
         fp0 = i960_rifl_read(g8, g9);
         r4 = (uintptr_t)(i32)(fp0);
         g9 = 0x7f;
-        if ((i32)r4 > (i32)g9) {
+        if ((signed char)r4 > (signed char)g9) {
             r4 = 0x7f;
         }
 
@@ -1681,10 +1686,10 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
         /* Disasm: lda 0xcc,g10 — mask immediate, not a ROM host pointer. */
         g10 = 0xcc;
         g4 = g10 & g4;
-        if ((i32)g4 == 0)
+        if ((unsigned char)g4 == 0)
             goto L_00036b54;
         g4 = i960_ld_u32(I960_WORKRAM, 0x2138c4, 0);
-        if ((i32)g4 != 0)
+        if ((unsigned char)g4 != 0)
             goto L_00036b34;
         g0 = 0xb7;
         g1 = 0;
@@ -1715,7 +1720,7 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
 
     L_00036b54:
         g4 = i960_ld_u32(I960_WORKRAM, 0x2138c4, 0);
-        if ((i32)g4 == 0)
+        if ((unsigned char)g4 == 0)
             goto L_00036b6c;
         g0 = 0xb8;
         g1 = 0;
@@ -1731,12 +1736,12 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
         r5 = 0x5d3ec0u;
 
     L_00036b78:
-        if ((i32)r4 == 0)
+        if ((unsigned char)r4 == 0)
             goto L_00036b98;
         g0 = geo_rng_u8((u32)g0, (u32)g1, (u32)g2);
     g12 = 0xff;
     g4 = g12 & g0;
-    if ((i32)g4 >= (i32)r4)
+    if ((signed char)g4 >= (signed char)r4)
         goto L_00036b98;
     g0 = 31 & g0;
     g0 = i960_ld_u32(I960_ABS, (u32)r5, (u32)(g0 << 2));
@@ -1846,7 +1851,7 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
         g5 = *gw32((u32)(uintptr_t)(r15 + 0x4c));
         *gw32((u32)(uintptr_t)(g6)) = fadd_leave((u32)g4, (u32)g5);
         g4 = i960_ld_u32(I960_WORKRAM, 0x214120, 0);
-        if ((i32)g4 == 0) {
+        if ((unsigned char)g4 == 0) {
             *gw32((u32)(uintptr_t)(g1)) = (u32)g14;
             *gw32((u32)(uintptr_t)(g0)) = (u32)g14;
         }
@@ -1877,8 +1882,13 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
     fp1 = i960_u32_to_f64(g9);
     if (fp1 <= 0.0)
         goto L_00036eb4;
-    g4 = i960_host_race_course_index();
-    if ((i32)g4 != 3)
+    /*
+     * Disasm @ 0x36DF0: ld 0x214354; cmpibne 3. This is the car-class cell
+     * (Delta MT → 3 after confirm @ 0x152A4), not the course remap — do not
+     * substitute host_race_course_index (desert 20a8c4 would skip this damp).
+     */
+    g4 = i960_ld_u32(I960_WORKRAM, 0x214354, 0);
+    if ((unsigned char)g4 != 3)
         goto L_00036e38;
     fp0 = i960_rifl_read(0xcccccccdu, 0x3ffcccccu);
     i960_rifl_write(&r14, &r15, (fp0) * (fp1));
@@ -2011,7 +2021,7 @@ void geo_view_scene_frame(void * arg0, void * arg1, void * arg2)
 
     L_00037048:
         g4 = i960_ld_u32(I960_WORKRAM, 0x214120, 0);
-        if ((i32)g4 != 2)
+        if ((unsigned char)g4 != 2)
             goto L_000370ac;
         g12 = *(u32 *)(fp + 0x1f0);
         g5 = g12 + 0x2c;

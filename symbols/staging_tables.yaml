@@ -59,6 +59,18 @@ tables:
       - { index: 6, staged: 0x005bb140, rom: 0x0001c140, fn: game_start_practice_enter }
       - { index: 7, staged: 0x005bb1a0, rom: 0x0001c1a0, fn: game_start_practice_slot_dispatch }
 
+  - name: championship_scene_slots
+    # workram @ 0x5BA820 — indexed by (0x2020ac & 15) in attract_scene_slot_dispatch.
+    # After fanfare PRG bumps ac to 4, [4] advances course (0x214354) for next race.
+    workram_base: 0x005ba820
+    slot_stride: 4
+    slots:
+      - { index: 0, staged: 0x005b4fd0, rom: 0x00015fd0, fn: game_start_course_display }
+      - { index: 1, staged: 0x005b52e0, rom: 0x000162e0, fn: game_start_course_select }
+      - { index: 2, staged: 0x005ba940, rom: 0x0001b940, fn: attract_hud_setup }
+      - { index: 3, staged: 0x005baba0, rom: 0x0001bba0, fn: game_start_race_frame }
+      - { index: 4, staged: 0x005bae40, rom: 0x0001be40, fn: game_start_race_champ_course_advance }
+
   - name: race_sub_handlers
     # workram @ 0x5BBA10 — indexed by (0x2020a8 >> 1) in game_start_race_sub_dispatch.
     # staged → rom via staged − 0x59f000 (same as other race leaves).
@@ -69,6 +81,8 @@ tables:
       - { index: 1, staged: 0x005bbd20, rom: 0x0001cd20, fn: game_start_race_slot1 }
       - { index: 2, staged: 0x005bbe30, rom: 0x0001ce30, fn: game_start_race_slot2 }
       - { index: 3, staged: 0x005bc160, rom: 0x0001d160, fn: game_start_race_slot3 }
+      - { index: 4, staged: 0x005bc680, rom: 0x0001d680, fn: game_start_race_slot4 }
+      - { index: 5, staged: 0x005bc8d0, rom: 0x0001d8d0, fn: game_start_race_slot5 }
 
   - name: race_geo_prg_handlers
     # Installed into 0x20ab50 by game_start_race_geo_prg_slot; callx each race_frame.
@@ -76,6 +90,15 @@ tables:
       - { staged: 0x005c0330, rom: 0x00021330, fn: game_start_race_geo_prg_thunk }
       - { staged: 0x005c0340, rom: 0x00021340, fn: game_start_race_geo_prg_hud_go }
       - { staged: 0x005c01f0, rom: 0x000211f0, fn: game_start_race_countdown_prg }
+      # Fanfare / results — slot4/slot5 install; tick 20ab60 then bump 2020ac.
+      - { staged: 0x005bfcf0, rom: 0x00020cf0, fn: game_start_race_fanfare_practice_win }
+      - { staged: 0x005bfe70, rom: 0x00020e70, fn: game_start_race_fanfare_practice_dnf }
+      - { staged: 0x005bfff0, rom: 0x00020ff0, fn: game_start_race_fanfare_champ_dnf }
+      - { staged: 0x005bf880, rom: 0x00020880, fn: game_start_race_fanfare_champ_win_0 }
+      - { staged: 0x005bf7c0, rom: 0x000207c0, fn: game_start_race_fanfare_champ_win_0_cont }
+      - { staged: 0x005bfa50, rom: 0x00020a50, fn: game_start_race_fanfare_champ_win_2 }
+      - { staged: 0x005bf990, rom: 0x00020990, fn: game_start_race_fanfare_champ_win_2_cont }
+      - { staged: 0x005bfbf0, rom: 0x00020bf0, fn: game_start_race_fanfare_champ_win_3 }
 
   - name: race_camera_handlers
     # Installed into 0x20ab4c by game_start_race_cam_bind; callx from race_frame.

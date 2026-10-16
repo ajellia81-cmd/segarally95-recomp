@@ -23,7 +23,11 @@ void game_start_race_lap_tick(u32 arg0, u32 arg1, u32 arg2)
 
     g14 = 0;
     span = i960_ld_u32(I960_WORKRAM, 0x20b0b0, 0);
-    /* @0x1C8C8: cmpibge 0,span → skip the subo. Decrement only while span > 0. */
+    /*
+     * @0x1C8C8: cmpibge 0,g5 → 0x1c8d0 (skip subo).
+     * Branch when 0 >= span (span <= 0); else span -= 1.
+     * Prior lift inverted the compare and only decremented negatives.
+     */
     if ((i32)span > 0)
         span = span - 1u;
     bc = i960_ld_u32(I960_WORKRAM, 0x2020bc, 0);

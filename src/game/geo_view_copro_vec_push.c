@@ -138,15 +138,6 @@ void geo_view_copro_vec_push(u32 arg0, u32 arg1, u32 arg2)
         packed |= (nibble << g2s);
         i960_st_u16(I960_WORKRAM, os_addr, 0, (u16)packed);
 
-        /*
-         * @0x37274: shlo r4,1,g7; or g7, 0x214208.
-         * r4 is the flag nibble — analog bits at nibble<<1, not 1<<nibble.
-         * 1<<nibble sent miss nibble 15 to bit 15 (frame_update scans 9..0
-         * and would load 0x5d67a0[-1]); nibble 4 selected the wrong row.
-         */
-        i960_st_u32(I960_WORKRAM, 0x214208, 0,
-                    i960_ld_u32(I960_WORKRAM, 0x214208, 0) | (nibble << 1));
-
         /* stq r8,0x50(fp); stq r12,0x40(fp); st r6,0x60(fp) — caller frame. */
         *(u32 *)(fp + 0x50) = lr8;
         *(u32 *)(fp + 0x54) = lr9;
@@ -158,7 +149,10 @@ void geo_view_copro_vec_push(u32 arg0, u32 arg1, u32 arg2)
         *(u32 *)(fp + 0x4c) = lr15;
         *(u32 *)(fp + 0x60) = slot_w20;
 
-        /* @0x37274: shlo nibble,1 then or into 0x214208 (not 1<<nibble). */
+        /*
+         * @0x37274: shlo r4,1,g7; or g7, 0x214208 (once).
+         * r4 is the flag nibble — bits at nibble<<1, not 1<<nibble.
+         */
         i960_st_u32(I960_WORKRAM, 0x214208, 0,
                     i960_ld_u32(I960_WORKRAM, 0x214208, 0) | (nibble << 1));
 

@@ -127,6 +127,9 @@ int i960_host_staging_call_lifted(u32 workram_or_rom_pc)
     case 0x0001bba0u:
         game_start_race_frame((u32)g0, (u32)g1, (u32)g2);
         return 1;
+    case 0x0001be40u:
+        game_start_race_champ_course_advance((u32)g0, (u32)g1, (u32)g2);
+        return 1;
     case 0x0001c9c0u:
         game_start_race_sub_reset((u32)g0, (u32)g1, (u32)g2);
         return 1;
@@ -145,6 +148,30 @@ int i960_host_staging_call_lifted(u32 workram_or_rom_pc)
     case 0x0001d160u:
         game_start_race_slot3((u32)g0, (u32)g1, (u32)g2);
         return 1;
+    case 0x0001d680u:
+        game_start_race_slot4((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x0001d8d0u:
+        game_start_race_slot5((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00018270u:
+        game_start_race_lap_record((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x0001c940u:
+        game_start_race_lap_best((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x000219f0u:
+        game_start_race_obj_seed_champ((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x0002c770u:
+        game_start_race_obj_car_attach_champ((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x0001c7a0u:
+        game_start_race_sound_mute((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x0001eb88u:
+        game_start_race_name_copy((u32)g0, (u32)g1, (u32)g2);
+        return 1;
     case 0x0001bf50u:
         game_start_race_timer_arm((u32)g0, (u32)g1, (u32)g2);
         return 1;
@@ -156,6 +183,30 @@ int i960_host_staging_call_lifted(u32 workram_or_rom_pc)
         return 1;
     case 0x000211f0u:
         game_start_race_countdown_prg((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00020cf0u:
+        game_start_race_fanfare_practice_win((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00020e70u:
+        game_start_race_fanfare_practice_dnf((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00020ff0u:
+        game_start_race_fanfare_champ_dnf((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00020880u:
+        game_start_race_fanfare_champ_win_0((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x000207c0u:
+        game_start_race_fanfare_champ_win_0_cont((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00020a50u:
+        game_start_race_fanfare_champ_win_2((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00020990u:
+        game_start_race_fanfare_champ_win_2_cont((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00020bf0u:
+        game_start_race_fanfare_champ_win_3((u32)g0, (u32)g1, (u32)g2);
         return 1;
     case 0x00022768u:
         game_start_race_gate_bind((u32)g0, (u32)g1, (u32)g2);

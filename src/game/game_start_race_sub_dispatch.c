@@ -5,7 +5,8 @@
  *   [1] 0x5BBD20 → 0x1CD20 game_start_race_slot1
  *   [2] 0x5BBE30 → 0x1CE30 game_start_race_slot2 (countdown)
  *   [3] 0x5BC160 → 0x1D160 game_start_race_slot3
- *   [4..] 0x5BC680… still unlifted; empty slots advance 0x2020ac.
+ *   [4] 0x5BC680 → 0x1D680 game_start_race_slot4 (course complete)
+ *   [5] 0x5BC8D0 → 0x1D8D0 game_start_race_slot5 (time-up fanfare)
  *
  * Lifted slots 0–3 are called directly from the ROM table (symbols/
  * staging_tables.yaml) — same targets as callx through 0x5BBA10, without
@@ -67,6 +68,12 @@ void game_start_race_sub_dispatch(u32 arg0, u32 arg1, u32 arg2)
         return;
     case 3:
         game_start_race_slot3(0, 0, 0);
+        return;
+    case 4:
+        game_start_race_slot4(0, 0, 0);
+        return;
+    case 5:
+        game_start_race_slot5(0, 0, 0);
         return;
     default:
         break;

@@ -9,6 +9,10 @@
 #ifdef I960_HOST_HAVE_GL
 
 #if defined(__APPLE__)
+/* Apple marks the whole OpenGL API deprecated; we still use it on purpose. */
+#ifndef GL_SILENCE_DEPRECATION
+#define GL_SILENCE_DEPRECATION
+#endif
 #include <OpenGL/gl.h>
 #else
 #ifdef _WIN32
