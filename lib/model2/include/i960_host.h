@@ -79,6 +79,16 @@ void i960_host_request_halt(void);
 void i960_host_frame_present(void);
 void i960_host_run_post_reset(u32 arg0, u32 arg1, u32 arg2);
 
+/* Host boundary extracted from game_dispatch_main @ 0x3150.
+ * Requires the original cold-boot/post-reset prerequisites; begin ONCE at the
+ * original game entry, then step on the same core-owning thread. Not reentrant.
+ * step: 0 = already halted, 1 = one existing loop iteration completed (possibly
+ * requesting halt during that iteration). May block in nested game/vsync calls.
+ * Does not initialize assets, reset hardware, implement pause, or own shutdown.
+ * No iOS caller is wired yet; never call this on the UIKit main thread. */
+void i960_host_game_loop_begin(u32 arg0, u32 arg1, u32 arg2);
+int i960_host_game_loop_step(void);
+
 /* Boot milestones (tile-script completion hooks).
  *   I960_HOST_MILESTONE_BOOT=sound_init  halt after 0x005B9A10
  *   I960_HOST_MILESTONE_BOOT=copyright   halt after 0x005B9960 (default boot viewer)

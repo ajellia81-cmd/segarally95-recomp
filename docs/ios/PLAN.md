@@ -51,3 +51,12 @@ Metal 이식으로 임의 FOV, 카메라, 메쉬 자동 맞춤을 추가하지 �
 
 아래 기록은 실행한 명령만 기재합니다. Xcode, 시뮬레이터, 실기기, 게임 재생은 미검증입니다.
 상세 결과는 VALIDATION.md에 기록합니다.
+
+## 구현 진행
+
+- 단계 2의 첫 경계: 명시적 파일 로더와 오류 반환 reset API 추가.
+- 기존 game_dispatch_main의 초기화/반복 구간을 begin/step으로 분리.
+  ROM 없는 가짜 서비스 테스트로 호출 순서와 halt 경계를 검증함.
+- 다음 작업: cold boot부터 새 루프 진입으로 이어지는 소유권 설계, pause/resume 시
+  입력 해제와 vsync 타이머/사운드 스레드 정지·재개, 일관된 shutdown/오류 복구.
+  현재 begin/step은 UIKit에서 호출하지 않으며, 루트 main을 iOS에 연결하지 않음.

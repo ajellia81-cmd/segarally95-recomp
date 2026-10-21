@@ -8,7 +8,7 @@
 #include "i960_host.h"
 #include "lift_syms.h"
 
-void game_dispatch_main(u32 arg0, u32 arg1, u32 arg2)
+void i960_host_game_loop_begin(u32 arg0, u32 arg1, u32 arg2)
 {
     void *arg0_p = (void *)arg0;
     void *a2 = (void *)arg2;
@@ -40,9 +40,14 @@ void game_dispatch_main(u32 arg0, u32 arg1, u32 arg2)
     format_scan_bx_stub(0, 0);
     game_mode_apply(0, 0, 0);
 
-    L_00003190:
+}
+
+/* One existing 0x3190 -> 0x3230 loop iteration; can wait for vsync.
+ * This is not a nonblocking display callback or an independent game instance. */
+int i960_host_game_loop_step(void)
+{
         if (i960_host_dispatch_halted())
-            return;
+            return 0;
         g4 = i960_ld_u32(I960_WORKRAM, 0x20a530, 0);
         /* lift: cmpibe 0, g4, 0x31fc @ 0x3198 */
         comm_board_dispatch(0, 0, 0);
@@ -91,5 +96,13 @@ void game_dispatch_main(u32 arg0, u32 arg1, u32 arg2)
         geo_fifo_emit(0, 0);
         geo_fifo_preset(0, 0);
         i960_host_frame_present();
-        goto L_00003190;
+        return 1;
+}
+
+/* Desktop path retains the original continuous loop and halt condition. */
+void game_dispatch_main(u32 arg0, u32 arg1, u32 arg2)
+{
+    i960_host_game_loop_begin(arg0, arg1, arg2);
+    while (i960_host_game_loop_step()) {
+    }
 }
