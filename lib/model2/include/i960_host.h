@@ -38,7 +38,18 @@ int i960_host_frame_pace_enabled(void);
 /* Zero the lifted register file and set sp/fp for host execution. */
 void i960_host_reset(void);
 
-/* Load ROM blobs (tolerates missing files). */
+/* App-facing reset: explicit sound directory, returns 0/-1 instead of exit().
+ * Call only after successful ROM load, on the sole core-owning thread.
+ * Failure can leave partially reset global state: do not execute the core.
+ * Success starts the existing sound-board thread; this is NOT a pause API. */
+int i960_host_reset_checked(const char *sound_rom_dir);
+
+/* App-facing loader: both paths required; no default lookup, board verification,
+ * auto-extraction or exit(). Returns 0/-1; existing loader may partially mutate
+ * global ROM state on error. Not a complete asset/provenance validator. */
+int i960_host_load_extracted(const char *maincpu_path, const char *main_data_path);
+
+/* Desktop loader: verifies board dumps, may auto-extract, exits on failure. */
 void i960_host_load_rom(void);
 
 /*
