@@ -1,4 +1,8 @@
-# 검증 기록 — 2026-10-21
+# 검증 기록
+
+아래 초기 기록은 당시 상태입니다. 최신 결과는 문서 끝의 최종 게이트를 기준으로 확인하세요.
+
+## 초기 준비 — 2026-10-21
 
 작업은 원격 Linux 컨테이너에서 수행했습니다. 사용자 Windows PC는 사용하지 않았습니다.
 
@@ -65,3 +69,58 @@ iOS NVRAM 저장은 같은 디렉터리의 임시 파일에 쓰고 flush/fsync �
   아직 확인하지 않았으며 iOS/Metal 컴파일 성공을 주장하지 않습니다.
 - unsigned 앱 컴파일만 허용하며 IPA/archive/export/서명/자산 업로드는 하지 않습니다.
 - 실기기, 시뮬레이터 실행, 실제 게임 파일, 화면·오디오·컨트롤러 및 성능은 미검증입니다.
+
+## 2026-10-22: 텍스처 경계 검사 추가
+
+검증 대상 소스 커밋: `4a7ec7b0677239c1190e341344e1bd8b4857ed80`.
+실행: https://github.com/ajellia81-cmd/segarally95-recomp/actions/runs/39700501174
+
+| 검사 | 실제 결과 | 범위 |
+|---|---|---|
+| Linux lift-check | 컴파일·링크 성공 | 게임/ROM 실행 없음, 기존 경고 있음 |
+| host 테스트 | 4/4 통과 | 명시적 로더, 루프 경계, 입력 정규화, 합성 SRAM 원자적 저장·복원 |
+| iPhoneOS | unsigned 앱/Metal 컴파일·링크 성공 | Xcode 26.6, iOS SDK, arm64 |
+| 패키징 전 검사 | 통과 | 기기 플랫폼, arm64, bundle ID, 실행 파일, metallib, 금지 자산 패턴 확인; IPA 미생성 |
+| 시뮬레이터 | SDK 컴파일·설치·실행 및 중앙 단색 픽셀 통과, 텍스처 픽셀 실패 | 기존 검사 좌표가 가로 스크린샷만 전제; 회전 대응 및 실패 진단 추가 후 재검증 |
+
+실패를 성공으로 간주하지 않았습니다. 위 실행은 최종 통과 실행이 아닙니다.
+
+## 2026-10-22: IPA 생성 직전 최종 게이트 — 통과
+
+검증 소스 커밋: `b58f3109488cf6f27d2b316d63ad351c9613267e`.
+실행: https://github.com/ajellia81-cmd/segarally95-recomp/actions/runs/39702068638
+이후 문서 전용 커밋은 검증된 구현·검사 코드를 바꾸지 않습니다.
+
+| 게이트 | 실제 확인 결과 |
+|---|---|
+| Linux 전체 lift-check | 컴파일·링크 성공, 기존 경고 있음 |
+| ROM 없는 host 계약 테스트 | 4/4 통과: explicit_asset_loading, game_loop_boundary, native_input_mapping, native_atomic_nvram |
+| iPhoneOS SDK | unsigned arm64 앱과 Metal 셰이더 컴파일·링크 성공 |
+| iPhoneSimulator SDK | unsigned 앱과 Metal 셰이더 컴파일·링크 성공 |
+| 시뮬레이터 실행 | 앱 설치·실행 후 프로세스 생존 확인 |
+| 합성 Metal 픽셀 | 중앙 단색 및 텍스처의 edge-clamp 픽셀 색 통과. 1206×2622 캡처의 회전 반영 |
+| IPA 생성 전 검사 | 기기 플랫폼/arm64/bundle ID/실행 파일/metallib/금지 자산 패턴 확인 통과 |
+| IPA/archive/export/서명/아티팩트 업로드 | 실행하지 않음 |
+
+CI 명령은 `.github/workflows/ios-compile.yml`에 보존했습니다.
+
+```sh
+bash .codex/setup.sh
+cmake -S tests/host -B build/host-tests
+cmake --build build/host-tests --parallel 2
+ctest --test-dir build/host-tests --output-on-failure
+# macOS matrix: iphoneos, iphonesimulator
+cmake -S . -B build/ios-<SDK> -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=<SDK> -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
+cmake --build build/ios-<SDK> --target SegaRallyIOS --config Debug -- CODE_SIGNING_ALLOWED=NO
+bash scripts/package-unsigned-ipa.sh --check build/ios-iphoneos/SegaRallyIOS.app
+bash scripts/ios-simulator-smoke.sh build/ios-iphonesimulator
+```
+
+스크린샷은 러너 안에서만 검사했고 업로드하지 않았습니다. 합성 프레임은 직접 생성한
+픽셀·정점·팔레트이며 게임 초기화/ROM/추출 데이터에 접근하지 않습니다.
+ROM 취득·추출·업로드·커밋·배포를 하지 않았고 upstream/main을 수정하지 않았습니다.
+
+실제 iPhone 설치, 게임 부팅·플레이·화면 일치, BGM/효과음, 실제 터치/패드 조작,
+백그라운드 복귀, 실제 게임 NVRAM, 장시간 성능은 미검증입니다.
+합성 픽셀 통과는 실제 게임 동작이나 전체 GL/Metal 시각적 일치를 증명하지 않습니다.
+개인 서명과 기기 검증은 이후 단계이며 현재 요청의 정지 지점은 IPA 생성 전입니다.
