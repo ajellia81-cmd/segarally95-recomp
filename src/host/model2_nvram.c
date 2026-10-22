@@ -17,6 +17,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef SEGAMOD2_IOS
+#include <unistd.h>
+#endif
 
 #define NVRAM_VERSION 1
 
@@ -343,13 +346,22 @@ int model2_nvram_save(const char *path)
 {
     FILE *fp;
     u32 i;
+#ifdef SEGAMOD2_IOS
+    char temporary[1024];
+#endif
 
     if (!path || !*path)
         path = g_nvram_path[0] ? g_nvram_path : nvram_default_path();
 
     nvram_capture_from_host();
 
+#ifdef SEGAMOD2_IOS
+    if (snprintf(temporary, sizeof(temporary), "%s.tmp", path) >= (int)sizeof(temporary))
+        return -1;
+    fp = fopen(temporary, "w");
+#else
     fp = fopen(path, "w");
+#endif
     if (!fp) {
         fprintf(stderr, "lift: nvram save failed: %s\n", path);
         return -1;
@@ -405,7 +417,18 @@ int model2_nvram_save(const char *path)
             fputc('\n', fp);
     }
 
+#ifdef SEGAMOD2_IOS
+    int failed = ferror(fp) || fflush(fp) != 0;
+    if (!failed && fsync(fileno(fp)) != 0) failed = 1;
+    if (fclose(fp) != 0) failed = 1;
+    if (failed || rename(temporary, path) != 0) {
+        remove(temporary);
+        fprintf(stderr, "lift: atomic nvram save failed: %s\n", path);
+        return -1;
+    }
+#else
     fclose(fp);
+#endif
     g_nvram.loaded = 1;
     g_nvram.have_settings = 1;
     g_nvram.dirty = 0;
