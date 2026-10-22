@@ -8,10 +8,24 @@ guard let image = NSBitmapImageRep(data: data),
 guard color.redComponent > 0.8 && color.greenComponent < 0.3 && color.blueComponent < 0.3 else {
     fatalError("Synthetic Metal triangle was not rendered at center: \(color)")
 }
-let viewportWidth = min(Double(image.pixelsWide), Double(image.pixelsHigh) * 4.0 / 3.0)
-let textureX = image.pixelsWide / 2 + Int(viewportWidth * 180.0 / 496.0)
-guard let textureColor = image.colorAt(x: textureX, y: image.pixelsHigh / 2)?.usingColorSpace(.deviceRGB),
-      textureColor.greenComponent > 0.8 && textureColor.redComponent < 0.3 && textureColor.blueComponent < 0.3 else {
-    fatalError("Synthetic textured triangle/edge clamp did not match expected green pixel")
+// simctl may retain the device's portrait pixel orientation for a landscape app.
+// Check the same camera-space point after either supported landscape rotation.
+let width = image.pixelsWide, height = image.pixelsHigh
+let landscapeWidth = Double(max(width, height))
+let landscapeHeight = Double(min(width, height))
+let viewportWidth = min(landscapeWidth, landscapeHeight * 4.0 / 3.0)
+let offset = Int(viewportWidth * 180.0 / 496.0)
+let points = width >= height
+    ? [(width / 2 + offset, height / 2), (width / 2 - offset, height / 2)]
+    : [(width / 2, height / 2 + offset), (width / 2, height / 2 - offset)]
+var matched = false
+var diagnostics: [String] = []
+for (x, y) in points {
+    guard let pixel = image.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+    diagnostics.append("(\(x),\(y)): \(pixel)")
+    matched = matched || (pixel.greenComponent > 0.8 && pixel.redComponent < 0.3 && pixel.blueComponent < 0.3)
 }
-print("Asset-free Metal solid and textured triangles visible; center and edge-clamp pixels verified")
+guard matched else {
+    fatalError("Synthetic texture/edge clamp mismatch in \(width)x\(height): \(diagnostics)")
+}
+print("Asset-free Metal solid and textured triangles visible; center and edge-clamp pixels verified (\(width)x\(height))")
