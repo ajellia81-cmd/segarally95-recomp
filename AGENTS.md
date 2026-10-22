@@ -7,8 +7,12 @@
   test fixtures. Never invoke rom-blocks, extraction scripts, or game run targets in cloud.
 - Cloud setup: bash .codex/setup.sh. It compiles lift-check only; compilation is not
   evidence of game execution, iOS compilation, or device functionality.
-- platform/ios is a standalone, asset-free app scaffold. It is not connected to
-  the lifted game. Follow docs/ios/PLAN.md for staged integration and acceptance gates.
+- platform/ios is an asset-free native app linked to the lifted core. Configure
+  the repository root with CMAKE_SYSTEM_NAME=iOS. Follow platform/ios/README.md.
+- Do not archive/export/sign/distribute an IPA. Source compilation of an unsigned
+  app and Metal shaders is allowed for verification; never add ROMs to CI.
+- Default scripts/ios-readiness.sh stops at Xcode project generation. The opt-in
+  --compile-check compiles an unsigned app; neither mode creates an IPA.
 - Keep Apple signing identities, profiles and credentials out of git and cloud setup.
 - Record exact commands and results. Never report Metal rendering, audio, touch,
   controllers, gameplay, or performance as tested without actual evidence.

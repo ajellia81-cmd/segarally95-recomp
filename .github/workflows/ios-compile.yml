@@ -1,0 +1,40 @@
+name: iOS source compilation (no IPA)
+on:
+  push:
+    branches: [ios-port]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-compile-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ROM-free desktop compile
+        run: bash .codex/setup.sh
+      - name: Host contract tests
+        run: |
+          cmake -S tests/host -B build/host-tests
+          cmake --build build/host-tests --parallel 2
+          ctest --test-dir build/host-tests --output-on-failure
+  apple-sdk:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: [iphoneos, iphonesimulator]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Apple SDK
+        run: xcodebuild -version && xcrun --sdk ${{ matrix.sdk }} --show-sdk-path
+      - name: Configure native app
+        run: cmake -S . -B build/ios-${{ matrix.sdk }} -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=${{ matrix.sdk }} -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
+      - name: Compile unsigned app and Metal shaders
+        run: cmake --build build/ios-${{ matrix.sdk }} --target SegaRallyIOS --config Debug -- CODE_SIGNING_ALLOWED=NO
+      # No ROMs, signing, archive, export, upload or IPA distribution.

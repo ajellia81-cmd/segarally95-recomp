@@ -14,3 +14,18 @@ target_include_directories(test_game_loop PRIVATE
   "${REPO_ROOT}/include" "${REPO_ROOT}/lib/model2/include"
   "${REPO_ROOT}/lib/model2/host")
 add_test(NAME game_loop_boundary COMMAND test_game_loop)
+add_library(ios_host_compile OBJECT
+  "${REPO_ROOT}/platform/ios/viewer_ios.c"
+  "${REPO_ROOT}/platform/ios/port_input.c")
+target_include_directories(ios_host_compile PRIVATE
+  "${REPO_ROOT}/platform/ios" "${REPO_ROOT}/include"
+  "${REPO_ROOT}/lib/model2/include" "${REPO_ROOT}/lib/model2/host"
+  "${REPO_ROOT}/lib/model2/geo/include" "${REPO_ROOT}/lib/model2/snd/include"
+  "${REPO_ROOT}/lib/model2/hw/include")
+add_executable(test_port_input test_port_input.c "${REPO_ROOT}/platform/ios/port_input.c")
+target_include_directories(test_port_input PRIVATE
+  "${REPO_ROOT}/platform/ios" "${REPO_ROOT}/include"
+  "${REPO_ROOT}/lib/model2/include" "${REPO_ROOT}/lib/model2/host"
+  "${REPO_ROOT}/lib/model2/geo/include")
+target_link_libraries(test_port_input PRIVATE m)
+add_test(NAME native_input_mapping COMMAND test_port_input)

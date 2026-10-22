@@ -60,3 +60,20 @@ Metal 이식으로 임의 FOV, 카메라, 메쉬 자동 맞춤을 추가하지 �
 - 다음 작업: cold boot부터 새 루프 진입으로 이어지는 소유권 설계, pause/resume 시
   입력 해제와 vsync 타이머/사운드 스레드 정지·재개, 일관된 shutdown/오류 복구.
   현재 begin/step은 UIKit에서 호출하지 않으며, 루트 main을 iOS에 연결하지 않음.
+
+## 2026-10-22 네이티브 통합
+
+UIKit 앱이 기존 lifted 코어를 소유하는 백그라운드 작업을 시작합니다. iOS 빌드에서
+SDL/OpenGL/Cocoa와 데스크톱 main/녹화/오디오를 제외하고 별도 뷰어를 링크합니다.
+네이티브 뷰어는 기존 vsync 콜백을 사용하므로 타이밍과 cold boot 순서를 유지합니다.
+기존 begin/step API는 독립 호출하지 않고 원래 boot 흐름에서 사용합니다.
+
+Metal 타일·GEO 출력, 기존 텍스처/팔레트·재질 정렬, AVAudioEngine 44.1kHz PCM,
+터치·GCController, 입력 해제·오디오 중단·백그라운드 저장 경로를 구현했습니다.
+이 항목들은 구현 상태이며, 게임/실기기 검증 완료를 의미하지 않습니다.
+
+IPA 생성 전 준비 게이트:
+1. ROM 없는 Linux 컴파일 및 계약 테스트.
+2. Apple SDK 대상 C/Objective-C/Metal 컴파일·링크(CI, 서명 없음).
+3. 기기 검증에 필요한 파일 경로·조작·알려진 제한을 문서화.
+4. 별도 요청 전에는 IPA archive/export 및 개인 서명은 수행하지 않음.
