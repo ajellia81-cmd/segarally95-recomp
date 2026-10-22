@@ -2,8 +2,7 @@ name: iOS source compilation (no IPA)
 on:
   push:
     branches: [ios-port]
-  pull_request:
-    branches: [main]
+    paths-ignore: ["docs/**", "**/*.md"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -38,3 +37,6 @@ jobs:
       - name: Compile unsigned app and Metal shaders
         run: cmake --build build/ios-${{ matrix.sdk }} --target SegaRallyIOS --config Debug -- CODE_SIGNING_ALLOWED=NO
       # No ROMs, signing, archive, export, upload or IPA distribution.
+      - name: Run asset-free Metal smoke test
+        if: matrix.sdk == 'iphonesimulator'
+        run: bash scripts/ios-simulator-smoke.sh build/ios-iphonesimulator

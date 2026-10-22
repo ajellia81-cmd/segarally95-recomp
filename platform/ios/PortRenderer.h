@@ -7,6 +7,7 @@
 @property(nonatomic, strong) NSArray<NSData *> *sheets;
 @property(nonatomic) simd_float4 viewport, focalCenter;
 @property(nonatomic) NSUInteger solidEnd, opaqueEnd, worldEnd, triangles;
++ (instancetype)syntheticTestFrame;
 + (instancetype)captureBottom:(const uint32_t *)bottom priority:(const uint32_t *)priority opaque:(BOOL)opaque;
 @end
 @interface PortRenderer : NSObject <MTKViewDelegate>

@@ -41,6 +41,20 @@ static NSData *tilePixels(const uint32_t *pixels,BOOL opaque) {
     return data;
 }
 @implementation PortFrame
++ (instancetype)syntheticTestFrame {
+    // Opt-in CI fixture: generated pixels and a solid triangle, never game data.
+    PortFrame *f=[PortFrame new];
+    NSMutableData *pixels=[NSMutableData dataWithLength:SYS24_FB_WIDTH*SYS24_FB_HEIGHT*4];
+    uint32_t *p=pixels.mutableBytes;
+    for(unsigned i=0;i<SYS24_FB_WIDTH*SYS24_FB_HEIGHT;i++)p[i]=0xff102040u;
+    f.bottom=pixels;f.viewport=(simd_float4){0,0,496,384};f.focalCenter=(simd_float4){248,192,0,0};
+    const float triangle[15]={-160,-130,1,0,0,160,-130,1,0,0,0,160,1,0,0};
+    f.vertices=[NSData dataWithBytes:triangle length:sizeof(triangle)];
+    PortMaterial m={0};for(unsigned i=0;i<16;i++)m.lut[i]=0xff2020ffu;
+    f.materials=[NSData dataWithBytes:&m length:sizeof(m)];
+    f.sheets=@[[NSMutableData dataWithLength:2048*1024],[NSMutableData dataWithLength:2048*1024]];
+    f.triangles=f.solidEnd=f.opaqueEnd=f.worldEnd=1;return f;
+}
 + (instancetype)captureBottom:(const uint32_t *)bottom priority:(const uint32_t *)priority opaque:(BOOL)opaque {
     PortFrame *f=[PortFrame new]; f.bottom=tilePixels(bottom,opaque); f.priority=tilePixels(priority,NO);
     if(opaque) return f;
@@ -139,6 +153,7 @@ static NSData *tilePixels(const uint32_t *pixels,BOOL opaque) {
         if(k==0)_tileDepth=state;else if(k==1)_solidDepth=state;else if(k==2)_opaqueDepth=state;else _cutoutDepth=state;
     }
     MTLTextureDescriptor *t=[MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:SYS24_FB_WIDTH height:SYS24_FB_HEIGHT mipmapped:NO];
+    t.storageMode=MTLStorageModeShared;
     t.usage=MTLTextureUsageShaderRead; _bottom=[view.device newTextureWithDescriptor:t]; _priority=[view.device newTextureWithDescriptor:t];
     t.pixelFormat=MTLPixelFormatR8Unorm; t.width=2048;t.height=1024;
     _sheet[0]=[view.device newTextureWithDescriptor:t]; _sheet[1]=[view.device newTextureWithDescriptor:t];

@@ -159,6 +159,8 @@ void port_host_audio_stop(void){[sessionOwner audioStop];}
 - (void)viewDidLoad {
     [super viewDidLoad];self.view.backgroundColor=UIColor.blackColor;
     sessionOwner=[PortSession new];
+    if([NSProcessInfo.processInfo.environment[@"PORT_RENDER_SMOKE"] isEqual:@"1"])
+        [sessionOwner publish:[PortFrame syntheticTestFrame]];
     __weak PortViewController *weak=self;
     _status=[UILabel new];_status.textColor=UIColor.whiteColor;_status.numberOfLines=3;_status.font=[UIFont systemFontOfSize:13];
     _status.text=@"개인용 iOS 포트 — 실제 게임·기기 검증 전";
