@@ -25,6 +25,8 @@
 /* SCSP 22.5792 MHz / 2 = 11.2896 MHz 68k → 256 cycles per 44.1 kHz sample.
  * Copy pump @ 0x602A46 waits 10× ROL.L #8 (24 cyc) for $409 CA. */
 
+static char startup_error[512];
+const char *model2_snd_last_error(void) { return startup_error; }
 static u8 g_midi[MIDI_CAP];
 static unsigned g_midi_total;
 static u8 g_last_command;
@@ -43,7 +45,44 @@ static pthread_mutex_t g_pcm_mu = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_cpu_mu = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t g_thr;
 static int g_thr_on;
-static volatile int g_thr_stop;
+static int g_thr_stop, g_thr_paused, g_thr_parked;
+static pthread_mutex_t g_control_mu = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t g_control_cond = PTHREAD_COND_INITIALIZER;
+
+/* Called on the sound worker, including its PCM backpressure path. */
+static int sound_checkpoint(struct timespec *deadline)
+{
+    int waited = 0, stop;
+    pthread_mutex_lock(&g_control_mu);
+    while (g_thr_paused && !g_thr_stop) {
+        waited = 1;
+        g_thr_parked = 1;
+        pthread_cond_broadcast(&g_control_cond);
+        pthread_cond_wait(&g_control_cond, &g_control_mu);
+    }
+    g_thr_parked = 0;
+    stop = g_thr_stop;
+    pthread_mutex_unlock(&g_control_mu);
+    if (waited) clock_gettime(CLOCK_MONOTONIC, deadline);
+    return stop;
+}
+
+/* Core-owner thread only: acknowledges parking before returning to background. */
+void model2_snd_set_paused(int paused)
+{
+    if (!g_thr_on) return;
+    pthread_mutex_lock(&g_control_mu);
+    g_thr_paused = !!paused;
+    pthread_cond_broadcast(&g_control_cond);
+    while (paused && !g_thr_parked && !g_thr_stop)
+        pthread_cond_wait(&g_control_cond, &g_control_mu);
+    pthread_mutex_unlock(&g_control_mu);
+    if (paused) {
+        pthread_mutex_lock(&g_pcm_mu);
+        g_pcm_r = g_pcm_n = 0;
+        pthread_mutex_unlock(&g_pcm_mu);
+    }
+}
 static unsigned g_tima_samp;
 static unsigned g_cyc_frac;
 static int g_logged_song;
@@ -123,11 +162,10 @@ static void pcm_push(const i16 *stereo, unsigned frames)
     pthread_mutex_unlock(&g_pcm_mu);
 }
 
-static void pcm_pull(i16 *stereo, unsigned frames)
+static void pcm_pull_locked(i16 *stereo, unsigned frames)
 {
     unsigned i;
 
-    pthread_mutex_lock(&g_pcm_mu);
     for (i = 0; i < frames; i++) {
         if (g_pcm_n) {
             stereo[i * 2u] = g_pcm[g_pcm_r * 2u];
@@ -139,6 +177,23 @@ static void pcm_pull(i16 *stereo, unsigned frames)
             stereo[i * 2u + 1u] = 0;
         }
     }
+}
+
+static void pcm_pull(i16 *stereo, unsigned frames)
+{
+    pthread_mutex_lock(&g_pcm_mu);
+    pcm_pull_locked(stereo, frames);
+    pthread_mutex_unlock(&g_pcm_mu);
+}
+
+void model2_snd_render_nonblocking(signed short *stereo, unsigned frames)
+{
+    if (!stereo || !frames) return;
+    if (pthread_mutex_trylock(&g_pcm_mu) != 0) {
+        memset(stereo, 0, (size_t)frames * 2u * sizeof(*stereo));
+        return;
+    }
+    pcm_pull_locked(stereo, frames);
     pthread_mutex_unlock(&g_pcm_mu);
 }
 
@@ -252,7 +307,7 @@ static void *board_thread(void *arg)
     boot_68k();
     pthread_mutex_unlock(&g_cpu_mu);
     clock_gettime(CLOCK_MONOTONIC, &deadline);
-    while (!g_thr_stop) {
+    while (!sound_checkpoint(&deadline)) {
         struct timespec now, rem;
 
         board_chunk();
@@ -266,7 +321,7 @@ static void *board_thread(void *arg)
             unsigned n;
             struct timespec wait;
 
-            if (g_thr_stop)
+            if (sound_checkpoint(&deadline))
                 break;
             pthread_mutex_lock(&g_pcm_mu);
             n = g_pcm_n;
@@ -278,7 +333,7 @@ static void *board_thread(void *arg)
             nanosleep(&wait, NULL);
             clock_gettime(CLOCK_MONOTONIC, &deadline);
         }
-        if (g_thr_stop)
+        if (sound_checkpoint(&deadline))
             break;
 
         deadline.tv_nsec += (long)((PCM_CHUNK * 1000000000ull) / PCM_RATE);
@@ -305,10 +360,15 @@ static void thread_stop(void)
 {
     if (!g_thr_on)
         return;
+    pthread_mutex_lock(&g_control_mu);
     g_thr_stop = 1;
+    pthread_cond_broadcast(&g_control_cond);
+    pthread_mutex_unlock(&g_control_mu);
     pthread_join(g_thr, NULL);
     g_thr_on = 0;
-    g_thr_stop = 0;
+    pthread_mutex_lock(&g_control_mu);
+    g_thr_stop = g_thr_paused = g_thr_parked = 0;
+    pthread_mutex_unlock(&g_control_mu);
     /* Drop any leftover PCM so a reopen does not play a stale tail. */
     pthread_mutex_lock(&g_pcm_mu);
     g_pcm_r = g_pcm_n = 0;
@@ -326,7 +386,9 @@ static int thread_start(void)
 
     if (g_thr_on)
         return 0;
-    g_thr_stop = 0;
+    pthread_mutex_lock(&g_control_mu);
+    g_thr_stop = g_thr_paused = g_thr_parked = 0;
+    pthread_mutex_unlock(&g_control_mu);
     g_tima_samp = 0;
     g_logged_song = 0;
     g_logged_mix = 0;
@@ -334,7 +396,9 @@ static int thread_start(void)
     g_pkt_n = 0;
     g_uart_r = g_uart_w = g_uart_n = 0;
     g_pcm_r = g_pcm_n = 0;
-    if (pthread_create(&g_thr, NULL, board_thread, NULL) != 0) {
+    int thread_result = pthread_create(&g_thr, NULL, board_thread, NULL);
+    if (thread_result != 0) {
+        snprintf(startup_error, sizeof(startup_error), "Sound worker: %s (%d)", strerror(thread_result), thread_result);
         fprintf(stderr, "lift: sound thread create failed\n");
         return -1;
     }
@@ -534,8 +598,11 @@ int model2_snd_load_roms(const char *rom_dir)
     if (!dir || !*dir)
         dir = model2_resolve_rom_dir();
     thread_stop();
-    if (model2_snd_rom_load(dir) != 0)
+    startup_error[0] = 0;
+    if (model2_snd_rom_load(dir) != 0) {
+        snprintf(startup_error, sizeof(startup_error), "%s", model2_snd_rom_error());
         return -1;
+    }
     lift_status("lift: sound ROMs loaded from %s\n", dir);
     model2_snd_scsp_reset();
     model2_snd_m68k_reset();

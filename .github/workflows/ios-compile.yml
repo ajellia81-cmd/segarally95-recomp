@@ -1,0 +1,67 @@
+name: iOS personal unsigned IPA and validation
+on:
+  push:
+    branches: [ios-port]
+    paths-ignore: ["docs/**", "**/*.md"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-compile-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ROM-free desktop compile
+        run: bash .codex/setup.sh
+      - name: Host contract tests
+        run: |
+          cmake -S tests/host -B build/host-tests
+          cmake --build build/host-tests --parallel 2
+          ctest --test-dir build/host-tests --output-on-failure
+  apple-sdk:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: [iphoneos, iphonesimulator]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Apple SDK
+        run: xcodebuild -version && xcrun --sdk ${{ matrix.sdk }} --show-sdk-path
+      - name: Test prepared-directory retention with Foundation
+        if: matrix.sdk == 'iphoneos'
+        run: |
+          mkdir -p build
+          xcrun --sdk macosx clang -fobjc-arc -framework Foundation -Iplatform/ios tests/ios/test_prepared_cleanup.m -o build/test-prepared-cleanup
+          build/test-prepared-cleanup
+      - name: Configure native app
+        run: cmake -S . -B build/ios-${{ matrix.sdk }} -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=${{ matrix.sdk }} -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
+      - name: Compile unsigned app and Metal shaders
+        run: cmake --build build/ios-${{ matrix.sdk }} --target SegaRallyIOS --config ${{ matrix.sdk == 'iphoneos' && 'Release' || 'Debug' }} -- CODE_SIGNING_ALLOWED=NO
+      - name: Check IPA packaging prerequisites without packaging
+        if: matrix.sdk == 'iphoneos'
+        run: bash scripts/package-unsigned-ipa.sh --check build/ios-iphoneos/SegaRallyIOS.app
+      - name: Package unsigned personal IPA
+        if: matrix.sdk == 'iphoneos'
+        run: |
+          bash scripts/package-unsigned-ipa.sh --create build/ios-iphoneos/SegaRallyIOS.app build/SegaRallyChampionship-v0.2.2-unsigned.ipa
+          shasum -a 256 build/SegaRallyChampionship-v0.2.2-unsigned.ipa > build/SegaRallyChampionship-v0.2.2-unsigned.ipa.sha256
+      - name: Save personal IPA for download
+        if: matrix.sdk == 'iphoneos'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SegaRallyChampionship-v0.2.2-unsigned
+          path: |
+            build/SegaRallyChampionship-v0.2.2-unsigned.ipa
+            build/SegaRallyChampionship-v0.2.2-unsigned.ipa.sha256
+          if-no-files-found: error
+          retention-days: 3
+      # No ROMs, Apple signing, archive/export or public release.
+      - name: Run asset-free Metal smoke test
+        if: matrix.sdk == 'iphonesimulator'
+        timeout-minutes: 15
+        run: bash scripts/ios-simulator-smoke.sh build/ios-iphonesimulator

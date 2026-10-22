@@ -4,6 +4,7 @@
 #include "model2_geo.h"
 #include "model2_hw_lift.h"
 #include "model2_rom.h"
+#include "model2_rom_dir.h"
 #include "model2_snd.h"
 
 #include <stdio.h>
@@ -80,13 +81,15 @@ void i960_host_load_rom(void)
     /* Geo/polygon ROM loads lazily on first FIFO decode (avoids ~8MB startup read). */
 }
 
-void i960_host_reset(void)
+int i960_host_reset_checked(const char *sound_rom_dir)
 {
+    if (!sound_rom_dir || !*sound_rom_dir)
+        return -1;
     model2_hw_init_from_lift();
     model2_snd_reset();
-    if (model2_snd_load_roms(NULL) != 0) {
+    if (model2_snd_load_roms(sound_rom_dir) != 0) {
         fprintf(stderr, "lift: sound ROM load failed\n");
-        exit(1);
+        return -1;
     }
     model2_io_board_reset();
     zero_registers();
@@ -98,6 +101,13 @@ void i960_host_reset(void)
     sp = fp + 0x1030 - 0x100;
     if (sp >= (uintptr_t)(host_workram + sizeof(host_workram)))
         sp = (uintptr_t)(host_workram + 0x800);
+    return 0;
+}
+
+void i960_host_reset(void)
+{
+    if (i960_host_reset_checked(model2_resolve_rom_dir()) != 0)
+        exit(1);
 }
 
 void boot_entry_host(u32 arg0, u32 arg1, u32 arg2)

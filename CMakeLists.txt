@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 project(segamod2 LANGUAGES C)
+set(SEGAMOD2_IOS OFF)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+  set(SEGAMOD2_IOS ON)
+  enable_language(OBJC)
+endif()
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -24,6 +29,12 @@ include(CheckSymbolExists)
 set(SEGAMOD2_HAVE_SDL2 OFF)
 set(SEGAMOD2_SDL_TARGET "")
 
+if(SEGAMOD2_IOS)
+  # iOS must never discover desktop SDL, OpenGL or Cocoa from the build host.
+  set(PNG_FOUND OFF)
+  set(SEGAMOD2_HAVE_GL OFF)
+  find_package(Threads REQUIRED)
+else()
 find_package(SDL2 CONFIG QUIET)
 if(SDL2_FOUND)
   if(TARGET SDL2::SDL2)
@@ -78,6 +89,8 @@ endif()
 # Darwin Makefile enabled GL whenever SDL2 was present (system OpenGL framework).
 if(APPLE AND SEGAMOD2_HAVE_SDL2)
   set(SEGAMOD2_HAVE_GL ON)
+endif()
+
 endif()
 
 set(HAVE_PTHREAD_H OFF)
@@ -210,7 +223,6 @@ set(LIFT_HOST_RUNTIME
 set(LIFT_GAME_GLUE
   src/i960_host_syms.c
   src/i960_host_invoke.c
-  src/lift_main.c
 )
 file(GLOB LIFT_GAME CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/game/*.c)
 file(GLOB LIFT_HOST CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/host/*.c)
@@ -218,17 +230,24 @@ file(GLOB LIFT_LIBC CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/libc/*.c)
 file(GLOB LIFT_BOOT CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/boot/*.c)
 file(GLOB LIFT_IRQ  CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/irq/*.c)
 
-add_executable(segamod2
-  ${LIFT_HOST_RUNTIME}
-  ${LIFT_GAME_GLUE}
-  ${LIFT_GAME}
-  ${LIFT_HOST}
-  ${LIFT_LIBC}
-  ${LIFT_BOOT}
-  ${LIFT_IRQ}
-)
-target_link_libraries(segamod2 PRIVATE
-  model2_geo model2_hw model2_tgp model2_snd host_compat)
+if(SEGAMOD2_IOS)
+  list(FILTER LIFT_HOST EXCLUDE REGEX "/(sys24_viewer|sys24_viewer_record|model2_snd_lift)[.]c$")
+  add_library(segamod2_core STATIC ${LIFT_HOST_RUNTIME} ${LIFT_GAME_GLUE}
+    ${LIFT_GAME} ${LIFT_HOST} ${LIFT_LIBC} ${LIFT_BOOT} ${LIFT_IRQ}
+    platform/ios/viewer_ios.c platform/ios/port_input.c)
+  target_compile_definitions(segamod2_common INTERFACE SEGAMOD2_IOS=1)
+  target_include_directories(segamod2_core PUBLIC ${CMAKE_SOURCE_DIR}/platform/ios)
+  target_link_libraries(segamod2_core PUBLIC
+    model2_geo model2_hw model2_tgp model2_snd host_compat)
+  add_subdirectory(platform/ios)
+  # No extraction or CLI run targets exist in an iOS project.
+  return()
+else()
+  add_executable(segamod2 src/lift_main.c ${LIFT_HOST_RUNTIME} ${LIFT_GAME_GLUE}
+    ${LIFT_GAME} ${LIFT_HOST} ${LIFT_LIBC} ${LIFT_BOOT} ${LIFT_IRQ})
+  target_link_libraries(segamod2 PRIVATE
+    model2_geo model2_hw model2_tgp model2_snd host_compat)
+endif()
 
 # --- ROM extract ------------------------------------------------------------
 if(DEFINED ENV{SEGAMOD2_ROM_DIR} AND NOT "$ENV{SEGAMOD2_ROM_DIR}" STREQUAL "")

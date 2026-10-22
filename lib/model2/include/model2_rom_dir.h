@@ -11,6 +11,11 @@
 #include <string.h>
 #include <sys/stat.h>
 
+/* Set once by an embedded app before any core loaders/workers start.
+ * Owns a copy; NULL clears the override. Desktop environment fallback remains. */
+int model2_set_rom_directory(const char *dir);
+const char *model2_explicit_rom_directory(void);
+
 static int model2_rom_dir_has_program(const char *dir)
 {
     char path[768];
@@ -28,6 +33,9 @@ static const char *model2_resolve_rom_dir(void)
     const char *env;
     const char *root;
 
+    env = model2_explicit_rom_directory();
+    if (env && env[0])
+        return env;
     env = getenv("SEGAMOD2_ROM_DIR");
     if (env && env[0])
         return env;

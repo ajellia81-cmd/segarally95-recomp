@@ -31,9 +31,14 @@ void model2_snd_midi_in(u8 byte);
 
 /* Load 68k program + 8 MiB SCSP samples. 0 on success. */
 int model2_snd_load_roms(const char *rom_dir);
+const char *model2_snd_last_error(void);
 
 /* Mix stereo s16le @ 44100. Pulls a ring filled by the 68k+SCSP thread. */
 void model2_snd_render(signed short *stereo, unsigned frames);
+/* Native audio callback: try-lock; emit silence rather than wait on producer. */
+void model2_snd_render_nonblocking(signed short *stereo, unsigned frames);
+/* Core-owner thread only; pause waits for the sound worker to park. */
+void model2_snd_set_paused(int paused);
 
 /* Input log ring (bytes written to UART data). */
 unsigned model2_snd_count(void);

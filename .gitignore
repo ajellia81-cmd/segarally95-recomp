@@ -16,3 +16,13 @@ lib/model2/*/build/
 *.bin
 !disasm/**/*.bin
 .cache
+
+# Personal iOS build/signing outputs and user data
+/build-ios*/
+*.ipa
+*.xcarchive/
+*.mobileprovision
+*.p12
+*.xcuserstate
+xcuserdata/
+/platform/ios/UserData/
