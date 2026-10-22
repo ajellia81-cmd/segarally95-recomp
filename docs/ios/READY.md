@@ -1,5 +1,8 @@
 # IPA 생성 전 준비 상태
 
+> 이 문서는 이전 요청의 준비 단계 기록입니다. 2026-10-22 사용자가 IPA 생성을
+> 추가 승인했습니다. 현재 패키지와 검증 결과는 [IPA_BUILD.md](IPA_BUILD.md)를 참조하세요.
+
 작업 대상: `ajellia81-cmd/segarally95-recomp`, `ios-port`. upstream/main은 수정하지 않았습니다.
 현재 목표는 개인용 iOS 포트의 소스·빌드 준비이며, 실제 게임의 완주 검증이 아닙니다.
 

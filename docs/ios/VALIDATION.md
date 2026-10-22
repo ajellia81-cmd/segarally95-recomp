@@ -124,3 +124,20 @@ ROM 취득·추출·업로드·커밋·배포를 하지 않았고 upstream/main�
 백그라운드 복귀, 실제 게임 NVRAM, 장시간 성능은 미검증입니다.
 합성 픽셀 통과는 실제 게임 동작이나 전체 GL/Metal 시각적 일치를 증명하지 않습니다.
 개인 서명과 기기 검증은 이후 단계이며 현재 요청의 정지 지점은 IPA 생성 전입니다.
+
+## 2026-10-22: 추가 승인된 IPA 생성 — 통과
+
+사용자가 미서명 IPA 생성, iPhone 18 Pro Max 화면 대응, 컨트롤러 연결 시 터치 숨김 및
+분리 시 복원을 추가 요청했습니다. 위의 IPA 생성 전 정지 지점은 이 요청으로 갱신됐습니다.
+
+소스 `9cd2790817d643bd24885e23d21dfee3a4ec9064`,
+CI https://github.com/ajellia81-cmd/segarally95-recomp/actions/runs/39704629334 — 전체 성공.
+
+- Linux lift-check, host 테스트 4/4 통과.
+- iPhoneOS arm64 Release 및 simulator Debug 앱/Metal 컴파일·링크 성공.
+- `package-unsigned-ipa.sh --check` 및 `--create` 성공.
+- iPhone 17 Pro Max 시뮬레이터(1320×2868, scale=3): 합성 단색·텍스처 픽셀,
+  안전 영역/조작부 비중첩 및 터치 숨김/복원 정책 통과. 실제 컨트롤러 연결은 미검증.
+- 다운로드 후 패키지 CRC, CI 체크섬, arm64 Mach-O 및 앱 구성 검사 성공.
+- Apple 서명·ROM 자산·App Store 배포·공개 Release 없음. 개인용 다운로드 아티팩트만 보관.
+- 실제 iPhone 18 Pro Max와 게임 실행은 미검증. 상세 정보 및 SHA-256은 IPA_BUILD.md 참조.
