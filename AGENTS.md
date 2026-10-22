@@ -9,8 +9,9 @@
   evidence of game execution, iOS compilation, or device functionality.
 - platform/ios is an asset-free native app linked to the lifted core. Configure
   the repository root with CMAKE_SYSTEM_NAME=iOS. Follow platform/ios/README.md.
-- Do not archive/export/sign/distribute an IPA. Source compilation of an unsigned
-  app and Metal shaders is allowed for verification; never add ROMs to CI.
+- User authorized an unsigned personal-use IPA build on 2026-10-22. Package only
+  the asset-free app; no Apple signing, App Store release, ROMs or game data.
+  Store the IPA as a short-lived Actions artifact for user download, not a release.
 - Default scripts/ios-readiness.sh stops at Xcode project generation. The opt-in
   --compile-check compiles an unsigned app; neither mode creates an IPA.
 - Keep Apple signing identities, profiles and credentials out of git and cloud setup.

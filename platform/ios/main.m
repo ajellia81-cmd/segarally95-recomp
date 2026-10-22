@@ -155,12 +155,20 @@ void port_host_audio_stop(void){[sessionOwner audioStop];}
     port_input_t _touch,_pad;
     GCController *_controller;
     BOOL _leftHeld,_rightHeld;
+    UIStackView *_leftRail,*_rightRail;
+    NSArray<UIView *> *_touchControls;
+    BOOL _smokePolicyValid;
 }
 - (UIButton *)button:(NSString *)name tag:(NSInteger)tag {
     UIButton *b=[UIButton buttonWithType:UIButtonTypeSystem];b.tag=tag;
     [b setTitle:name forState:UIControlStateNormal];b.backgroundColor=[UIColor colorWithWhite:0.12 alpha:0.8];b.tintColor=UIColor.whiteColor;
     [b addTarget:self action:@selector(down:) forControlEvents:UIControlEventTouchDown];
     [b addTarget:self action:@selector(up:) forControlEvents:UIControlEventTouchUpInside|UIControlEventTouchUpOutside|UIControlEventTouchCancel];
+    b.titleLabel.adjustsFontSizeToFitWidth=YES;b.titleLabel.minimumScaleFactor=0.7;
+    b.titleLabel.font=[UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+    b.layer.cornerRadius=8;
+    NSLayoutConstraint *height=[b.heightAnchor constraintGreaterThanOrEqualToConstant:44];
+    height.priority=999;height.active=YES;
     return b;
 }
 - (void)viewDidLoad {
@@ -170,7 +178,7 @@ void port_host_audio_stop(void){[sessionOwner audioStop];}
         [sessionOwner publish:[PortFrame syntheticTestFrame]];
     __weak PortViewController *weak=self;
     _status=[UILabel new];_status.textColor=UIColor.whiteColor;_status.numberOfLines=3;_status.font=[UIFont systemFontOfSize:13];
-    _status.text=@"개인용 iOS 포트 — 실제 게임·기기 검증 전";
+    _status.text=@"SEGA RALLY\n게임 파일 준비 후 시작하세요";
     sessionOwner.statusChanged=^(NSString *s){PortViewController *strong=weak;if(strong)strong->_status.text=s;};
     id<MTLDevice> device=MTLCreateSystemDefaultDevice();
     if(device) {
@@ -178,16 +186,45 @@ void port_host_audio_stop(void){[sessionOwner audioStop];}
         NSError *error=nil;_renderer=[[PortRenderer alloc] initWithView:self.metalView error:&error];
         _renderer.frameProvider=^{return [sessionOwner frame];};
         if(!_renderer)_status.text=error.localizedDescription?:@"Metal 준비 실패";
-        self.metalView.translatesAutoresizingMaskIntoConstraints=NO;[self.view addSubview:self.metalView];
-        [NSLayoutConstraint activateConstraints:@[[self.metalView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],[self.metalView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],[self.metalView.topAnchor constraintEqualToAnchor:self.view.topAnchor],[self.metalView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]]];
+        self.metalView.autoResizeDrawable=NO;
+        self.metalView.preferredFramesPerSecond=60;
     } else _status.text=@"Metal을 사용할 수 없는 기기입니다";
-    UIStackView *top=[[UIStackView alloc] initWithArrangedSubviews:@[_status,[self button:@"시작" tag:20],[self button:@"일시정지" tag:21],[self button:@"종료" tag:22]]];
-    top.spacing=12;top.translatesAutoresizingMaskIntoConstraints=NO;[self.view addSubview:top];
-    NSMutableArray *controls=[NSMutableArray array];
-    NSArray *names=@[@"◀",@"▶",@"가속",@"브레이크",@"코인",@"START",@"시점",@"기어"];
-    for(NSUInteger i=0;i<names.count;i++)[controls addObject:[self button:names[i] tag:i]];
-    UIStackView *bottom=[[UIStackView alloc] initWithArrangedSubviews:controls];bottom.spacing=6;bottom.distribution=UIStackViewDistributionFillEqually;bottom.translatesAutoresizingMaskIntoConstraints=NO;[self.view addSubview:bottom];
-    [NSLayoutConstraint activateConstraints:@[[top.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8],[top.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:10],[top.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-10],[bottom.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:10],[bottom.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-10],[bottom.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8],[bottom.heightAnchor constraintEqualToConstant:52]]];
+    // Keep controls outside the game canvas, inside the notch/home safe area.
+    UIStackView *(^row)(NSArray *)=^UIStackView *(NSArray *buttons){
+        UIStackView *r=[[UIStackView alloc] initWithArrangedSubviews:buttons];
+        r.spacing=6;r.distribution=UIStackViewDistributionFillEqually;return r;
+    };
+    UIView *leftSpace=[UIView new],*rightSpace=[UIView new];
+    UIStackView *steer=row(@[[self button:@"◀" tag:0],[self button:@"▶" tag:1]]);
+    UIStackView *coinStart=row(@[[self button:@"코인" tag:4],[self button:@"START" tag:5]]);
+    UIStackView *viewGear=row(@[[self button:@"시점" tag:6],[self button:@"기어" tag:7]]);
+    _leftRail=[[UIStackView alloc] initWithArrangedSubviews:@[_status,leftSpace,steer,coinStart,viewGear]];
+    UIButton *gas=[self button:@"가속" tag:2],*brake=[self button:@"브레이크" tag:3];
+    for(UIButton *pedal in @[gas,brake]) {
+        NSLayoutConstraint *height=[pedal.heightAnchor constraintEqualToConstant:68];
+        height.priority=999;height.active=YES;
+    }
+    _touchControls=@[steer,coinStart,viewGear,gas,brake];
+    _rightRail=[[UIStackView alloc] initWithArrangedSubviews:@[
+        [self button:@"시작" tag:20],[self button:@"일시정지" tag:21],
+        [self button:@"종료" tag:22],rightSpace,gas,brake]];
+    for(UIStackView *rail in @[_leftRail,_rightRail]) {
+        rail.axis=UILayoutConstraintAxisVertical;rail.spacing=6;
+        [rail.widthAnchor constraintEqualToConstant:112].active=YES;
+    }
+    [leftSpace setContentHuggingPriority:1 forAxis:UILayoutConstraintAxisVertical];
+    [rightSpace setContentHuggingPriority:1 forAxis:UILayoutConstraintAxisVertical];
+    [_status setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    UIView *canvas=self.metalView?:[UIView new];
+    UIStackView *layout=[[UIStackView alloc] initWithArrangedSubviews:@[_leftRail,canvas,_rightRail]];
+    layout.spacing=8;layout.translatesAutoresizingMaskIntoConstraints=NO;
+    [self.view addSubview:layout];
+    UILayoutGuide *safe=self.view.safeAreaLayoutGuide;
+    [NSLayoutConstraint activateConstraints:@[
+        [layout.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:8],
+        [layout.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-8],
+        [layout.topAnchor constraintEqualToAnchor:safe.topAnchor],
+        [layout.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor]]];
     NSNotificationCenter *nc=NSNotificationCenter.defaultCenter;
     [nc addObserver:self selector:@selector(controllerChanged:) name:GCControllerDidConnectNotification object:nil];
     [nc addObserver:self selector:@selector(controllerChanged:) name:GCControllerDidDisconnectNotification object:nil];
@@ -195,6 +232,43 @@ void port_host_audio_stop(void){[sessionOwner audioStop];}
     [nc addObserver:self selector:@selector(audioConfiguration:) name:AVAudioEngineConfigurationChangeNotification object:nil];
     [nc addObserver:self selector:@selector(inactive:) name:UIApplicationWillResignActiveNotification object:nil];
     [self controllerChanged:nil];
+    if([NSProcessInfo.processInfo.environment[@"PORT_RENDER_SMOKE"] isEqual:@"1"]) {
+        // Exercise presentation policy only; this does not emulate a real controller.
+        [self setTouchControlsConnected:NO];
+        BOOL before=[self touchControlsHidden:NO];
+        _touch.throttle=1;_leftHeld=YES;[sessionOwner setTouch:_touch];
+        [self setTouchControlsConnected:YES];
+        BOOL hidden=[self touchControlsHidden:YES]&&_touch.throttle==0&&!_leftHeld;
+        [self setTouchControlsConnected:NO];
+        _smokePolicyValid=before&&hidden&&[self touchControlsHidden:NO];
+        [self setTouchControlsConnected:_controller!=nil];
+    }
+}
+- (BOOL)prefersStatusBarHidden { return YES; }
+- (BOOL)prefersHomeIndicatorAutoHidden { return YES; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskLandscape; }
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    if(!self.metalView || !self.view.window)return;
+    // Use the actual screen scale, including on the 2868 x 1320 Pro Max panel.
+    CGFloat scale=self.view.window.screen.nativeScale;
+    self.metalView.contentScaleFactor=scale;
+    CGSize size=self.metalView.bounds.size;
+    self.metalView.drawableSize=CGSizeMake(round(size.width*scale),round(size.height*scale));
+    if(![NSProcessInfo.processInfo.environment[@"PORT_RENDER_SMOKE"] isEqual:@"1"])return;
+    CGRect canvas=[self.metalView convertRect:self.metalView.bounds toView:self.view];
+    CGRect left=[_leftRail convertRect:_leftRail.bounds toView:self.view];
+    CGRect right=[_rightRail convertRect:_rightRail.bounds toView:self.view];
+    CGRect safe=CGRectInset(self.view.safeAreaLayoutGuide.layoutFrame,-0.5,-0.5);
+    BOOL valid=CGRectContainsRect(safe,canvas)&&CGRectContainsRect(safe,left)&&CGRectContainsRect(safe,right)
+        &&!CGRectIntersectsRect(canvas,left)&&!CGRectIntersectsRect(canvas,right);
+    CGFloat w=fmin(canvas.size.width,canvas.size.height*4.0/3.0),h=w*3.0/4.0;
+    NSDictionary *report=@{@"valid":@(valid),@"controllerPolicy":@(_smokePolicyValid),@"bounds":@[@(self.view.bounds.size.width),@(self.view.bounds.size.height)],
+        @"viewport":@[@(canvas.origin.x+(canvas.size.width-w)/2),@(canvas.origin.y+(canvas.size.height-h)/2),@(w),@(h)],
+        @"drawable":@[@(self.metalView.drawableSize.width),@(self.metalView.drawableSize.height)],@"scale":@(scale)};
+    NSURL *dir=[NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].firstObject;
+    NSData *json=[NSJSONSerialization dataWithJSONObject:report options:0 error:nil];
+    [json writeToURL:[dir URLByAppendingPathComponent:@"port-layout-smoke.json"] atomically:YES];
 }
 - (void)inactive:(NSNotification *)n { memset(&_touch,0,sizeof(_touch));memset(&_pad,0,sizeof(_pad));_leftHeld=_rightHeld=NO; }
 - (void)down:(UIButton *)b {
@@ -210,12 +284,24 @@ void port_host_audio_stop(void){[sessionOwner audioStop];}
     _touch.steer=(float)_rightHeld-(float)_leftHeld;
     [sessionOwner setTouch:_touch];
 }
+- (BOOL)touchControlsHidden:(BOOL)hidden {
+    for(UIView *control in _touchControls)if(control.hidden!=hidden)return NO;
+    return YES;
+}
+- (void)setTouchControlsConnected:(BOOL)connected {
+    // Clear pressed touch buttons before hiding or restoring the overlay.
+    memset(&_touch,0,sizeof(_touch));_leftHeld=_rightHeld=NO;
+    [sessionOwner setTouch:_touch];
+    for(UIView *control in _touchControls)control.hidden=connected;
+}
 - (void)controllerChanged:(NSNotification *)note {
+    if(!NSThread.isMainThread){dispatch_async(dispatch_get_main_queue(),^{[self controllerChanged:nil];});return;}
     _controller.extendedGamepad.valueChangedHandler=nil;
     _controller.extendedGamepad.leftShoulder.pressedChangedHandler=nil;
     _controller.extendedGamepad.rightShoulder.pressedChangedHandler=nil;
     _controller=nil;memset(&_pad,0,sizeof(_pad));[sessionOwner setPad:_pad];
     for(GCController *c in GCController.controllers)if(c.extendedGamepad){_controller=c;break;}
+    [self setTouchControlsConnected:_controller!=nil];
     if(!_controller)return;
     _controller.handlerQueue=dispatch_get_main_queue();_pad.gear=1;
     __weak PortViewController *weak=self;

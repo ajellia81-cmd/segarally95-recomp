@@ -1,4 +1,4 @@
-name: iOS source compilation (no IPA)
+name: iOS personal unsigned IPA and validation
 on:
   push:
     branches: [ios-port]
@@ -35,12 +35,27 @@ jobs:
       - name: Configure native app
         run: cmake -S . -B build/ios-${{ matrix.sdk }} -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=${{ matrix.sdk }} -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
       - name: Compile unsigned app and Metal shaders
-        run: cmake --build build/ios-${{ matrix.sdk }} --target SegaRallyIOS --config Debug -- CODE_SIGNING_ALLOWED=NO
+        run: cmake --build build/ios-${{ matrix.sdk }} --target SegaRallyIOS --config ${{ matrix.sdk == 'iphoneos' && 'Release' || 'Debug' }} -- CODE_SIGNING_ALLOWED=NO
       - name: Check IPA packaging prerequisites without packaging
         if: matrix.sdk == 'iphoneos'
         run: bash scripts/package-unsigned-ipa.sh --check build/ios-iphoneos/SegaRallyIOS.app
-      # No ROMs, signing, archive, export, upload or IPA distribution.
+      - name: Package unsigned personal IPA
+        if: matrix.sdk == 'iphoneos'
+        run: |
+          bash scripts/package-unsigned-ipa.sh --create build/ios-iphoneos/SegaRallyIOS.app build/SegaRallyIOS-iPhone18ProMax-unsigned.ipa
+          shasum -a 256 build/SegaRallyIOS-iPhone18ProMax-unsigned.ipa > build/SegaRallyIOS-iPhone18ProMax-unsigned.ipa.sha256
+      - name: Save personal IPA for download
+        if: matrix.sdk == 'iphoneos'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SegaRallyIOS-iPhone18ProMax-unsigned
+          path: |
+            build/SegaRallyIOS-iPhone18ProMax-unsigned.ipa
+            build/SegaRallyIOS-iPhone18ProMax-unsigned.ipa.sha256
+          if-no-files-found: error
+          retention-days: 3
+      # No ROMs, Apple signing, archive/export or public release.
       - name: Run asset-free Metal smoke test
         if: matrix.sdk == 'iphonesimulator'
-        timeout-minutes: 10
+        timeout-minutes: 15
         run: bash scripts/ios-simulator-smoke.sh build/ios-iphonesimulator
