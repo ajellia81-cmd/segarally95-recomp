@@ -48,12 +48,19 @@ static NSData *tilePixels(const uint32_t *pixels,BOOL opaque) {
     uint32_t *p=pixels.mutableBytes;
     for(unsigned i=0;i<SYS24_FB_WIDTH*SYS24_FB_HEIGHT;i++)p[i]=0xff102040u;
     f.bottom=pixels;f.viewport=(simd_float4){0,0,496,384};f.focalCenter=(simd_float4){248,192,0,0};
-    const float triangle[15]={-160,-130,1,0,0,160,-130,1,0,0,0,160,1,0,0};
-    f.vertices=[NSData dataWithBytes:triangle length:sizeof(triangle)];
-    PortMaterial m={0};for(unsigned i=0;i<16;i++)m.lut[i]=0xff2020ffu;
-    f.materials=[NSData dataWithBytes:&m length:sizeof(m)];
-    f.sheets=@[[NSMutableData dataWithLength:2048*1024],[NSMutableData dataWithLength:2048*1024]];
-    f.triangles=f.solidEnd=f.opaqueEnd=f.worldEnd=1;return f;
+    const float triangles[30]={
+        -160,-130,1,0,0,160,-130,1,0,0,0,160,1,0,0,
+        110,-100,1,0,0,240,-100,1,0,0,180,100,1,0,0};
+    f.vertices=[NSData dataWithBytes:triangles length:sizeof(triangles)];
+    PortMaterial m[2]={0};
+    for(unsigned i=0;i<16;i++){m[0].lut[i]=0xff2020ffu;m[1].lut[i]=0xffff2020u;}
+    m[1].patch=(simd_float4){2048,0,32,32};m[1].meta=(simd_uint4){4,0,0,0};
+    m[1].lut[1]=0xff20ff20u;
+    f.materials=[NSData dataWithBytes:m length:sizeof(m)];
+    NSMutableData *sheet=[NSMutableData dataWithLength:2048*1024];
+    ((uint8_t *)sheet.mutableBytes)[2047]=1; // Expected GL_CLAMP_TO_EDGE sample.
+    f.sheets=@[sheet,[NSMutableData dataWithLength:2048*1024]];
+    f.solidEnd=1;f.triangles=f.opaqueEnd=f.worldEnd=2;return f;
 }
 + (instancetype)captureBottom:(const uint32_t *)bottom priority:(const uint32_t *)priority opaque:(BOOL)opaque {
     PortFrame *f=[PortFrame new]; f.bottom=tilePixels(bottom,opaque); f.priority=tilePixels(priority,NO);

@@ -26,7 +26,7 @@ fragment float4 geo_fragment(Raster in [[stage_in]], device const Material *mats
     if (m.meta.x & 4u) {
         float u=wrap_coord(in.uv.x,m.patch.z,(m.meta.x&32u)!=0);
         float v=wrap_coord(in.uv.y,m.patch.w,(m.meta.x&64u)!=0);
-        uint2 coord=uint2(uint(m.patch.x+u)%2048u,uint(m.patch.y+v)%1024u);
+        uint2 coord=min(uint2(m.patch.xy+float2(u,v)),uint2(2047,1023));
         float texel=(m.meta.y&1u)?sheet1.read(coord).r:sheet0.read(coord).r;
         index=min(uint(round(texel*255)),15u);
     }
