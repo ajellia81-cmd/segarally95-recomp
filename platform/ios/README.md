@@ -24,7 +24,12 @@ bash scripts/ios-readiness.sh --compile-check iphonesimulator
 bash scripts/ios-readiness.sh --compile-check iphoneos
 ```
 
-개인 설치용 서명 팀/고유 bundle ID 설정과 IPA archive/export는 별도 단계입니다.
+기본 bundle ID는 `local.personal.segarally95`이며 CMake의
+`-DSEGAMOD2_BUNDLE_ID=개인.고유.식별자`로 지정할 수 있습니다.
+`bash scripts/package-unsigned-ipa.sh --check`는 기기 앱/번들 ID/arm64/Metal 리소스와
+게임 자산 미포함 여부를 검사하고 종료합니다. CI도 이 검사 모드만 실행합니다.
+별도 IPA 생성 요청 전에는 `--create` 모드를 실행하지 않습니다.
+개인 설치에는 개인 서명 또는 사이드로드 도구의 재서명이 별도로 필요합니다.
 인증서·프로파일·Apple 계정·게임 파일을 저장소나 클라우드에 올리지 마세요.
 
 ## 기기에서만 준비하는 파일
@@ -53,6 +58,7 @@ bash scripts/ios-readiness.sh --compile-check iphoneos
 
 ## 현재 제한과 검증
 
+ROM 없는 합성 삼각형의 Metal 화면 출력은 시뮬레이터에서 확인했습니다.
 실제 게임 파일을 사용한 화면·팔레트·오디오·조작·저장·백그라운드 복귀·성능은
 미검증입니다. Metal은 기존 GL 재질 정렬/깊이/스텐실 합성 계약을 옮긴 초기 구현이며
 시각적 일치/성능을 보장하지 않습니다. iOS는 원본 게임 타이밍을 따릅니다.

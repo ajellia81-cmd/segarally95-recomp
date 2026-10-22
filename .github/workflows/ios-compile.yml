@@ -36,6 +36,9 @@ jobs:
         run: cmake -S . -B build/ios-${{ matrix.sdk }} -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=${{ matrix.sdk }} -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
       - name: Compile unsigned app and Metal shaders
         run: cmake --build build/ios-${{ matrix.sdk }} --target SegaRallyIOS --config Debug -- CODE_SIGNING_ALLOWED=NO
+      - name: Check IPA packaging prerequisites without packaging
+        if: matrix.sdk == 'iphoneos'
+        run: bash scripts/package-unsigned-ipa.sh --check build/ios-iphoneos/SegaRallyIOS.app
       # No ROMs, signing, archive, export, upload or IPA distribution.
       - name: Run asset-free Metal smoke test
         if: matrix.sdk == 'iphonesimulator'
