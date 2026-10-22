@@ -1,5 +1,7 @@
 #import "PortROMPreparation.h"
 #include "port_rom_import.h"
+#import "PortPreparedCleanup.h"
+#include <sys/stat.h>
 static NSURL *failure(NSError **error,NSString *message){
     if(error)*error=[NSError errorWithDomain:@"ROMPreparation" code:1 userInfo:@{NSLocalizedDescriptionKey:message}];return nil;
 }
@@ -30,7 +32,10 @@ NSURL *PortPrepareROMs(NSURL *input,NSURL *support,NSError **error){
         return failure(error,[@"ZIP 준비 실패: " stringByAppendingString:[NSString stringWithUTF8String:message]?:@"알 수 없는 오류"]);
     }
     // Activate only complete preparations, retaining any previous data on failure.
-    for(NSURL *old in [fm contentsOfDirectoryAtURL:support includingPropertiesForKeys:nil options:0 error:nil])
-        if([old.lastPathComponent hasPrefix:@"Prepared-"]&&![old isEqual:stage])[fm removeItemAtURL:old error:nil];
+    PortCleanupPreparedDirectories(fm,support,stage);
+    // Never hand the core a stage that disappeared during cache maintenance.
+    struct stat st;
+    if(stat(stage.fileSystemRepresentation,&st)!=0||!S_ISDIR(st.st_mode))
+        return failure(error,@"준비 폴더 보존 실패 — 앱을 완전히 종료한 뒤 다시 시작하세요");
     return stage;
 }
