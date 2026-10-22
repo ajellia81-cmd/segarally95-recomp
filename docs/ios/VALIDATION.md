@@ -203,3 +203,31 @@ IPA: `SegaRallyChampionship-v0.2.1-unsigned.ipa`, 1,782,855 bytes.
 SHA-256: `31e6fced804bb249ee5ae327e95a35d10a60856bf4521adc20e5dac03410ab51`.
 사용자의 시작 오류 해결 여부는 실기기 재시험 전입니다. 계속 실패하면 새 팝업 또는
 startup-diagnostics.txt가 필요합니다. ROM/파생 데이터의 git/CI/IPA 포함은 없습니다.
+
+
+## 2026-10-22: 0.2.1 진단 로그 확인 — 활성 준비 폴더 삭제 오류 수정
+
+사용자 기기의 로그는 ZIP 가져오기 완료 후 준비 폴더 및 두 BIN의 stat가 모두
+ENOENT(errno=2)였음을 확인했습니다. ROM 내용 CRC 검사가 시작되기 전의 실패입니다.
+개인 컨테이너 경로/UUID와 첨부 로그 자체는 git/CI에 넣지 않았습니다.
+
+원인: 캐시 정리에서 NSURL 객체의 isEqual:로 현재 폴더를 구분했습니다. 열거 URL과
+isDirectory:YES로 만든 URL의 끝 슬래시 표현 차이 때문에 같은 현재 폴더도 삭제 대상이
+됩니다. 같은 부모 안의 생성된 고유 폴더 이름으로 비교하도록 수정하고, 정리 후 폴더
+존재를 C stat로 확인합니다. 원본 ZIP은 변경하지 않으므로 다시 준비할 수 있습니다.
+
+소스: `3100f79b25b4fcb8c977cc863292015291c7dac5`.
+CI: https://github.com/ajellia81-cmd/segarally95-recomp/actions/runs/39735298120
+
+- Apple Foundation 회귀 검사에서 `Legacy NSURL equality would delete active directory: YES`
+  확인. 수정된 동일 정리 함수는 활성 폴더와 합성 BIN을 보존하고 이전 준비 폴더만 삭제했습니다.
+  일반 사용자 폴더 보존 및 슬래시 없는 활성 URL 변형도 검사했습니다. 게임 데이터 없음.
+- Linux 전체 lift-check 및 host 6/6 통과.
+- CI 세 작업 전체 성공. iPhoneOS Release/Simulator Debug 앱·Metal 컴파일·링크,
+  기기 IPA 생성 및 시뮬레이터 합성 Metal 픽셀·전체 와이드·안전 영역·터치 정책 검사 통과.
+- 다운로드 후 CRC·CI 체크섬·arm64·iPhoneOS·0.2.2(4)·앱 이름·아이콘/metallib·제외 자산 검사 통과.
+
+IPA: `SegaRallyChampionship-v0.2.2-unsigned.ipa`, 1,782,976 bytes.
+SHA-256: `385197d1f5815ab00f660230920a5e3005659869b9d75034cf16d5cff46a6faf`.
+실제 iPhone에서 게임 시작 성공 여부는 사용자 재시험 전입니다. ROM/게임 데이터의
+CI·git·IPA 포함이나 실제 게임/사운드 CPU 실행은 하지 않았습니다.

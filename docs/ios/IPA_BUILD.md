@@ -1,4 +1,4 @@
-# Sega Rally Championship 0.2.1 — 개인용 IPA
+# Sega Rally Championship 0.2.2 — 개인용 IPA
 
 최신 사용자 요청: Revision B ZIP 자동 준비, iPhone 18 Pro Max 전체 화면 와이드,
 앱 이름/흰 배경 아이콘 변경. 컨트롤러 연결 시 터치 숨김/분리 시 복원은 유지합니다.
@@ -22,11 +22,40 @@ iCloud 백업에서 제외합니다. 실패 시 구체적인 파일 오류를 �
   여백을 두지 않습니다. 3D 투영 창을 가로로 넓히고 세로 시야/기존 물체 비례를 유지합니다.
 - 2D 타일과 스플래시는 화면 전체에 맞춥니다. 조작부는 화면 위 노치/홈 안전 영역 안에 표시합니다.
 - 게임 내 카메라/GEO 명령은 변경하지 않습니다. 실제 주행에서 외곽 오브젝트 표시와 시각적 일치는 미검증입니다.
-- 앱 표시 이름: Sega Rally Championship. 버전: 0.2.1(3). bundle ID: local.personal.segarally95.
+- 앱 표시 이름: Sega Rally Championship. 버전: 0.2.2(4). bundle ID: local.personal.segarally95.
 - 흰 배경 아이콘은 사용자 제공 그림을 바탕으로 만들었습니다. iOS의 기본 모서리 마스크를 사용합니다.
 - 미서명 iPhoneOS arm64 Release IPA이며 설치 시 사용자의 개인 서명이 필요합니다.
 - ROM/게임 데이터/Apple 서명 자산을 IPA·git·CI에 포함하지 않습니다. IPA는 3일간 Actions
   아티팩트로 보관하며 App Store나 공개 Release에 게시하지 않습니다.
+
+## 0.2.2: 준비 폴더 보존 수정
+
+사용자가 제공한 0.2.1 시작 로그는 ZIP 가져오기 이후 준비 디렉터리와 두 BIN의
+stat가 모두 ENOENT(errno=2)로 실패한 것을 보여 줍니다. ROM CRC 불일치가 아닙니다.
+
+캐시 정리가 `NSURL isEqual:`로 활성 디렉터리를 구분했습니다. 디렉터리 열거 URL과
+`isDirectory:YES`로 만든 URL은 같은 파일 경로여도 끝의 슬래시 표현이 달라질 수 있어,
+활성 디렉터리까지 이전 캐시로 오인해 삭제하는 오류입니다. 같은 부모 안에서 생성된
+고유 폴더 이름을 비교하도록 수정했습니다. 정리 후 폴더가 존재하는지도 확인합니다.
+원본 ZIP은 바꾸지 않으며 다시 시작하면 준비 파일을 새로 생성합니다.
+
+Foundation 회귀 검사는 합성 BIN으로 활성 폴더/파일 보존, 이전 캐시 삭제,
+일반 사용자 폴더 보존 및 디렉터리 URL 슬래시 변형을 검사합니다. 사용자 첨부 로그나
+기기의 컨테이너 식별자·ROM 데이터를 git/CI에 추가하지 않았습니다.
+
+수정 소스: `3100f79b25b4fcb8c977cc863292015291c7dac5`.
+CI: https://github.com/ajellia81-cmd/segarally95-recomp/actions/runs/39735298120
+Foundation 회귀 검사에서 기존 URL 비교라면 활성 폴더를 삭제하는 조건이 재현됐고,
+수정 후 활성 폴더/BIN 보존 및 이전 캐시 삭제가 통과했습니다.
+Linux 전체 lift-check 및 host 6/6, iPhoneOS Release/Simulator Debug 앱·Metal 컴파일,
+IPA 생성과 다운로드 후 패키지 검사도 통과했습니다. CI 세 작업 전체 성공이며,
+시뮬레이터 합성 Metal 픽셀·전체 화면 와이드·안전 영역·터치 숨김/복원 정책도 통과했습니다.
+
+파일: `SegaRallyChampionship-v0.2.2-unsigned.ipa` — 1,782,976 bytes.
+SHA-256: `385197d1f5815ab00f660230920a5e3005659869b9d75034cf16d5cff46a6faf`.
+CRC·CI 체크섬·arm64·iPhoneOS·앱 이름·0.2.2(4)·아이콘·metallib 및 ROM/서명 자산
+미포함을 확인했습니다.
+실제 기기에서의 시작/게임 동작은 사용자 재시험 전이며, 이전 게임/기기 미검증 범위는 유지됩니다.
 
 ## 0.2 시작 실패 후속 조사
 
