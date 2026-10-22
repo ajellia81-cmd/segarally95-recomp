@@ -4,7 +4,7 @@ if(NOT TARGET segamod2_core)
 endif()
 set(SEGAMOD2_BUNDLE_ID "local.personal.segarally95" CACHE STRING "Personal app bundle identifier")
 add_executable(SegaRallyIOS MACOSX_BUNDLE main.m PortRenderer.m PortAudio.m PortROMPreparation.m port_zip.c port_rom_import.c Assets.xcassets)
-target_compile_options(SegaRallyIOS PRIVATE -fobjc-arc)
+target_compile_options(SegaRallyIOS PRIVATE "$<$<COMPILE_LANGUAGE:OBJC>:-fobjc-arc>")
 target_link_libraries(SegaRallyIOS PRIVATE segamod2_core z
   "-framework UIKit" "-framework CoreGraphics" "-framework Metal" "-framework MetalKit"
   "-framework AVFoundation" "-framework GameController")
