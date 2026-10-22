@@ -17,7 +17,10 @@ int sys24_viewer_open(const char *title) {
     tiles = sys24_tile_create(SYS24_TILE_MASK_M2);
     bottom = calloc(SYS24_FB_WIDTH*SYS24_FB_HEIGHT, sizeof(u32));
     priority = calloc(SYS24_FB_WIDTH*SYS24_FB_HEIGHT, sizeof(u32));
-    if (!tiles || !bottom || !priority) return -1;
+    if (!tiles || !bottom || !priority) {
+        port_host_report_error("화면 버퍼를 준비하지 못했습니다");
+        return -1;
+    }
     port_host_audio_start();
     return 0;
 }
@@ -44,7 +47,7 @@ int sys24_viewer_flip(const u8 *map, const u8 *chars, const u8 *pal) {
 }
 int sys24_viewer_present(const u8 *m,const u8 *c,const u8 *p) { return sys24_viewer_flip(m,c,p); }
 void sys24_viewer_shutdown(void) {
-    (void)model2_nvram_save(NULL);
+    if (model2_nvram_save(NULL) != 0) port_host_report_error("NVRAM 저장에 실패했습니다");
     port_host_audio_stop();
     model2_snd_reset();
     model2_geo_shutdown();

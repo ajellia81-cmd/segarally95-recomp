@@ -27,6 +27,7 @@
 - (PortFrame *)frame;
 - (int)poll;
 - (void)publish:(PortFrame *)frame;
+- (void)reportError:(NSString *)message;
 - (void)audioStart;
 - (void)audioStop;
 @end
@@ -34,7 +35,7 @@ static PortSession *sessionOwner;
 
 @implementation PortSession {
     NSCondition *_gate;
-    BOOL _active,_interrupted,_paused,_stop,_running,_everStarted;
+    BOOL _active,_interrupted,_paused,_stop,_running,_everStarted,_hadError;
     port_input_t _touch,_pad;
     unsigned _gear;
     PortFrame *_frame;
@@ -45,6 +46,7 @@ static PortSession *sessionOwner;
 - (void)status:(NSString *)text {
     dispatch_async(dispatch_get_main_queue(),^{if(self.statusChanged)self.statusChanged(text);});
 }
+- (void)reportError:(NSString *)message { [_gate lock];_hadError=YES;[_gate unlock];[self status:message]; }
 - (void)setTouch:(port_input_t)input { [_gate lock];if(_active&&!_interrupted&&!_paused){if(input.gear!=_touch.gear)_gear=input.gear;_touch=input;}[_gate unlock]; }
 - (void)setPad:(port_input_t)input { [_gate lock];if(_active&&!_interrupted&&!_paused){if(input.gear!=_pad.gear)_gear=input.gear;_pad=input;}[_gate unlock]; }
 - (void)updateAudio {
@@ -70,7 +72,7 @@ static PortSession *sessionOwner;
         [_gate unlock];
         port_input_release();model2_snd_set_paused(1);
         int saved=model2_nvram_save(NULL);
-        if(saved)[self status:@"저장 실패 — 저장 공간과 파일 권한을 확인하세요"];
+        if(saved)[self reportError:@"저장 실패 — 저장 공간과 파일 권한을 확인하세요"];
         dispatch_async(dispatch_get_main_queue(),^{if(self.parked)self.parked();});
         [_gate lock];
         while((!_active||_interrupted||_paused)&&!_stop)[_gate wait];
@@ -96,6 +98,9 @@ static PortSession *sessionOwner;
        ![fm createDirectoryAtURL:support withIntermediateDirectories:YES attributes:nil error:&error]) {
         [self status:error.localizedDescription];return;
     }
+    if(![roms setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:&error]) {
+        [self status:error.localizedDescription];return;
+    }
     NSString *cpu=[[roms URLByAppendingPathComponent:@"maincpu_deinterleaved.bin"] path];
     NSString *data=[[roms URLByAppendingPathComponent:@"main_data_deinterleaved.bin"] path];
     for(NSArray *item in @[@[cpu,@(0x100000)],@[data,@(0xc00000)]]) {
@@ -104,7 +109,7 @@ static PortSession *sessionOwner;
             [self status:@"필요한 게임 파일이 없습니다. 파일 앱의 이 앱/ROMs 폴더에 개인 소유 파일을 준비하세요. 자세한 목록은 프로젝트 README에 있습니다."];return;
         }
     }
-    [_gate lock];_running=_everStarted=YES;[_gate unlock];
+    [_gate lock];_running=_everStarted=YES;_stop=_paused=_interrupted=_hadError=NO;[self changeGate];[_gate unlock];
     NSString *save=[[support URLByAppendingPathComponent:@"nvram.yaml"] path];
     [self status:@"코어 초기화 중…"];
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0),^{
@@ -119,14 +124,15 @@ static PortSession *sessionOwner;
                 [self status:@"실행 중 — 실기기 검증 전"];
                 result=i960_lift_boot_screen_run(&opts);
                 // Also closes partially allocated viewer state if viewer_open failed.
-                sys24_viewer_shutdown();
+                if(result!=0)sys24_viewer_shutdown();
             } else {
                 model2_snd_reset();
                 [self status:@"게임 파일 검증 또는 코어 초기화 실패. 앱을 다시 열기 전에 README의 파일 목록을 확인하세요."];
             }
-            [_gate lock];_running=NO;[_gate unlock];
+            [_gate lock];_running=NO;BOOL hadError=_hadError;[_gate unlock];
             [self audioStop];
-            if(result==0)[self status:@"종료됨 — 다시 시작하려면 앱을 다시 열어 주세요"];
+            if(result==0&&!hadError)[self status:@"종료됨 — 다시 시작하려면 앱을 다시 열어 주세요"];
+            else if(result>0&&!hadError)[self reportError:@"화면 초기화 또는 코어 실행에 실패했습니다"];
             dispatch_async(dispatch_get_main_queue(),^{if(self.parked)self.parked();});
         }
     });
@@ -136,6 +142,7 @@ int port_host_poll(void){return [sessionOwner poll];}
 void port_host_publish(const uint32_t *bottom,const uint32_t *priority,int opaque){
     @autoreleasepool {[sessionOwner publish:[PortFrame captureBottom:bottom priority:priority opaque:opaque]];}
 }
+void port_host_report_error(const char *message){[sessionOwner reportError:[NSString stringWithUTF8String:message]];}
 void port_host_audio_start(void){[sessionOwner audioStart];}
 void port_host_audio_stop(void){[sessionOwner audioStop];}
 
