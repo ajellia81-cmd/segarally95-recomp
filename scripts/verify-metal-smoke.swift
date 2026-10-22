@@ -9,11 +9,12 @@ guard layout["valid"] as? Bool == true, layout["controllerPolicy"] as? Bool == t
 }
 let bounds = layout["bounds"] as! [Double], viewport = layout["viewport"] as! [Double]
 let drawable = layout["drawable"] as! [Double], scale = layout["scale"] as! Double
-guard bounds[0] > bounds[1], drawable[0] > 0, drawable[1] > 0, scale >= 1 else {
+guard bounds[0] > bounds[1], drawable[0] > 0, drawable[1] > 0, scale >= 1, abs(drawable[0]-bounds[0]*scale)<1, abs(drawable[1]-bounds[1]*scale)<1 else {
     fatalError("Invalid landscape/native drawable geometry: \(layout)")
 }
 let center = (viewport[0] + viewport[2]/2, viewport[1] + viewport[3]/2)
-let texture = (center.0 + viewport[2]*180.0/496.0, center.1)
+let projectionWidth = layout["projectionWidth"] as! Double
+let texture = (center.0 + viewport[2]*180.0/projectionWidth, center.1)
 let width = image.pixelsWide, height = image.pixelsHigh
 // simctl screenshots may keep the portrait pixel orientation. Transform both
 // expected fixture points together; the two colors must match one orientation.
@@ -39,4 +40,4 @@ for rotation in width >= height ? [0, 1] : [2, 3] {
         && green.greenComponent > 0.8 && green.redComponent < 0.3 && green.blueComponent < 0.3)
 }
 guard matched else { fatalError("Synthetic Metal pixel mismatch: \(diagnostics); layout=\(layout)") }
-print("Asset-free Metal solid/texture pixels, safe-area native layout and touch hide/restore policy verified (\(width)x\(height), drawable=\(drawable), scale=\(scale))")
+print("Asset-free Metal solid/texture pixels, edge-to-edge wide layout with safe touch overlays and touch hide/restore policy verified (\(width)x\(height), drawable=\(drawable), scale=\(scale))")

@@ -34,3 +34,13 @@ target_compile_definitions(test_native_nvram PRIVATE SEGAMOD2_IOS _POSIX_C_SOURC
 target_include_directories(test_native_nvram PRIVATE
   "${REPO_ROOT}/include" "${REPO_ROOT}/lib/model2/include" "${REPO_ROOT}/lib/model2/host")
 add_test(NAME native_atomic_nvram COMMAND test_native_nvram)
+find_package(ZLIB REQUIRED)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_executable(rom_import_driver rom_import_driver.c
+  "${REPO_ROOT}/platform/ios/port_zip.c"
+  "${REPO_ROOT}/platform/ios/port_rom_import.c"
+  "${REPO_ROOT}/lib/model2/host/model2_rom_check.c")
+target_include_directories(rom_import_driver PRIVATE
+  "${REPO_ROOT}/platform/ios" "${REPO_ROOT}/include" "${REPO_ROOT}/lib/model2/include" "${REPO_ROOT}/lib/model2/host")
+target_link_libraries(rom_import_driver PRIVATE ZLIB::ZLIB)
+add_test(NAME zip_rom_preparation COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_LIST_DIR}/test_rom_zip.py" $<TARGET_FILE:rom_import_driver>)

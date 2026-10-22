@@ -16,14 +16,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-typedef struct {
-    const char *name;
-    const char *alias;
-    unsigned size;
-    unsigned crc;
-} rom_expect_t;
-
-static const rom_expect_t k_roms[] = {
+static const model2_romset_entry_t k_roms[] = {
     /* maincpu */
     { "epr-17888b.12", NULL, 524288u, 0x95bce0b9u },
     { "epr-17889b.13", NULL, 524288u, 0x395c425eu },
@@ -49,6 +42,12 @@ static const rom_expect_t k_roms[] = {
     { "mpr-17886.36", NULL, 2097152u, 0x54a72923u },
     { "mpr-17887.37", NULL, 2097152u, 0x38c31fddu },
 };
+
+const model2_romset_entry_t *model2_romset_entries(unsigned *count)
+{
+    if(count)*count=sizeof(k_roms)/sizeof(k_roms[0]);
+    return k_roms;
+}
 
 static unsigned crc_table[256];
 static int crc_ready;
@@ -118,7 +117,7 @@ int model2_romset_verify(void)
     }
 
     for (i = 0; i < sizeof(k_roms) / sizeof(k_roms[0]); i++) {
-        const rom_expect_t *rom = &k_roms[i];
+        const model2_romset_entry_t *rom = &k_roms[i];
         char path[768];
         const char *used = rom->name;
         unsigned size = 0, crc = 0;

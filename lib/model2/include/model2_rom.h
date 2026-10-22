@@ -63,6 +63,12 @@ int model2_rom_load_default(void);
 
 /* Require the MAME srallycb files (present, size, CRC32). 0 ok, -1 on stderr. */
 int model2_romset_verify(void);
+typedef struct {
+    const char *name,*alias;
+    unsigned size,crc;
+} model2_romset_entry_t;
+/* Read-only published metadata; no game data. */
+const model2_romset_entry_t *model2_romset_entries(unsigned *count);
 
 /* Seed workram palette cells from maincpu ROM mirror (workram - 0x59F000).
  * Gamma scalars @ 0x5A2C70/0x5A2C74, lumaram row count @ 0x5A2EB0, table ptr @ 0x5A2EB4. */

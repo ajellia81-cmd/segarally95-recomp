@@ -3,8 +3,10 @@
 - Work only in ajellia81-cmd/segarally95-recomp on ios-port or a child branch.
   Never push to upstream, open upstream PRs, or merge without an explicit request.
 - Read Rules.txt and .cursor/rules/*.mdc before changing game/runtime semantics.
-- Do not obtain, upload, commit, or distribute ROMs, extracted game data, or ROM-derived
-  test fixtures. Never invoke rom-blocks, extraction scripts, or game run targets in cloud.
+- Do not obtain ROMs from external sources or commit/upload game data to GitHub/CI.
+  User provided a ZIP and explicitly authorized private conversion/import validation;
+  keep that data only in scratch outside git. Never run the game or put ROM-derived
+  fixtures in CI. On-device ZIP preparation is authorized; CI uses synthetic bytes only.
 - Cloud setup: bash .codex/setup.sh. It compiles lift-check only; compilation is not
   evidence of game execution, iOS compilation, or device functionality.
 - platform/ios is an asset-free native app linked to the lifted core. Configure

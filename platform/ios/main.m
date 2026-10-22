@@ -2,6 +2,7 @@
 #import <GameController/GameController.h>
 #import "PortRenderer.h"
 #import "PortAudio.h"
+#import "PortROMPreparation.h"
 #include "i960_host.h"
 #include "model2_rom.h"
 #include "model2_nvram.h"
@@ -12,6 +13,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include "port_display.h"
 
 @interface PortSession : NSObject
 @property(nonatomic,copy) void (^statusChanged)(NSString *);
@@ -35,7 +37,7 @@ static PortSession *sessionOwner;
 
 @implementation PortSession {
     NSCondition *_gate;
-    BOOL _active,_interrupted,_paused,_stop,_running,_everStarted,_hadError;
+    BOOL _active,_interrupted,_paused,_stop,_running,_everStarted,_hadError,_preparing;
     port_input_t _touch,_pad;
     unsigned _gear;
     PortFrame *_frame;
@@ -87,6 +89,7 @@ static PortSession *sessionOwner;
 }
 - (void)start {
     [_gate lock];
+    if(_preparing){[_gate unlock];return;}
     if(_everStarted){[_gate unlock];[self status:@"다시 시작하려면 앱을 완전히 종료한 뒤 열어 주세요"];return;}
     [_gate unlock];
     NSFileManager *fm=NSFileManager.defaultManager;
@@ -101,25 +104,29 @@ static PortSession *sessionOwner;
     if(![roms setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:&error]) {
         [self status:error.localizedDescription];return;
     }
-    NSString *cpu=[[roms URLByAppendingPathComponent:@"maincpu_deinterleaved.bin"] path];
-    NSString *data=[[roms URLByAppendingPathComponent:@"main_data_deinterleaved.bin"] path];
-    for(NSArray *item in @[@[cpu,@(0x100000)],@[data,@(0xc00000)]]) {
-        NSDictionary *attr=[fm attributesOfItemAtPath:item[0] error:nil];
-        if(![attr[NSFileType] isEqual:NSFileTypeRegular] || [attr fileSize]!=[item[1] unsignedLongLongValue]) {
-            [self status:@"필요한 게임 파일이 없습니다. 파일 앱의 이 앱/ROMs 폴더에 개인 소유 파일을 준비하세요. 자세한 목록은 프로젝트 README에 있습니다."];return;
-        }
-    }
-    [_gate lock];_running=_everStarted=YES;_stop=_paused=_interrupted=_hadError=NO;[self changeGate];[_gate unlock];
+    [_gate lock];_preparing=YES;_stop=NO;[_gate unlock];
     NSString *save=[[support URLByAppendingPathComponent:@"nvram.yaml"] path];
-    [self status:@"코어 초기화 중…"];
+    [self status:@"ZIP 확인 및 게임 파일 준비 중…"];
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0),^{
         @autoreleasepool {
-            setenv("SEGAMOD2_ROM_DIR",roms.fileSystemRepresentation,1);
+            NSError *prepareError=nil;
+            NSURL *ready=PortPrepareROMs(roms,support,&prepareError);
+            [_gate lock];_preparing=NO;BOOL cancelled=_stop;
+            if(ready&&!cancelled){_running=_everStarted=YES;_hadError=NO;[self changeGate];}
+            [_gate unlock];
+            if(!ready){[self status:prepareError.localizedDescription?:@"게임 파일 준비 실패"];
+                dispatch_async(dispatch_get_main_queue(),^{if(self.parked)self.parked();});return;}
+            if(cancelled){[self status:@"파일 준비가 취소되었습니다"];
+                dispatch_async(dispatch_get_main_queue(),^{if(self.parked)self.parked();});return;}
+            NSString *cpu=[ready URLByAppendingPathComponent:@"maincpu_deinterleaved.bin"].path;
+            NSString *data=[ready URLByAppendingPathComponent:@"main_data_deinterleaved.bin"].path;
+            setenv("SEGAMOD2_ROM_DIR",ready.fileSystemRepresentation,1);
             setenv("I960_HOST_NVRAM",save.fileSystemRepresentation,1);
             setenv("I960_HOST_ASPECT","4:3",1);
+            [self status:@"코어 초기화 중…"];
             int result=-1;
             if(model2_romset_verify()==0 && i960_host_load_extracted(cpu.fileSystemRepresentation,data.fileSystemRepresentation)==0 &&
-               i960_host_reset_checked(roms.fileSystemRepresentation)==0) {
+               i960_host_reset_checked(ready.fileSystemRepresentation)==0) {
                 track_viewer_opts_t opts={0};opts.viewer_boot=1;opts.live_view=1;opts.aspect="4:3";
                 [self status:@"실행 중 — 실기기 검증 전"];
                 result=i960_lift_boot_screen_run(&opts);
@@ -178,7 +185,7 @@ void port_host_audio_stop(void){[sessionOwner audioStop];}
         [sessionOwner publish:[PortFrame syntheticTestFrame]];
     __weak PortViewController *weak=self;
     _status=[UILabel new];_status.textColor=UIColor.whiteColor;_status.numberOfLines=3;_status.font=[UIFont systemFontOfSize:13];
-    _status.text=@"SEGA RALLY\n게임 파일 준비 후 시작하세요";
+    _status.text=@"SEGA RALLY\nROMs에 ZIP을 넣고 시작하세요";
     sessionOwner.statusChanged=^(NSString *s){PortViewController *strong=weak;if(strong)strong->_status.text=s;};
     id<MTLDevice> device=MTLCreateSystemDefaultDevice();
     if(device) {
@@ -215,16 +222,24 @@ void port_host_audio_stop(void){[sessionOwner audioStop];}
     [leftSpace setContentHuggingPriority:1 forAxis:UILayoutConstraintAxisVertical];
     [rightSpace setContentHuggingPriority:1 forAxis:UILayoutConstraintAxisVertical];
     [_status setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
-    UIView *canvas=self.metalView?:[UIView new];
-    UIStackView *layout=[[UIStackView alloc] initWithArrangedSubviews:@[_leftRail,canvas,_rightRail]];
-    layout.spacing=8;layout.translatesAutoresizingMaskIntoConstraints=NO;
-    [self.view addSubview:layout];
+    if(self.metalView){
+        self.metalView.translatesAutoresizingMaskIntoConstraints=NO;[self.view addSubview:self.metalView];
+        [NSLayoutConstraint activateConstraints:@[
+            [self.metalView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [self.metalView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [self.metalView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            [self.metalView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]]];
+    }
+    // Game renders edge-to-edge. Touch/menu overlays alone honor safe areas.
     UILayoutGuide *safe=self.view.safeAreaLayoutGuide;
-    [NSLayoutConstraint activateConstraints:@[
-        [layout.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:8],
-        [layout.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-8],
-        [layout.topAnchor constraintEqualToAnchor:safe.topAnchor],
-        [layout.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor]]];
+    for(UIStackView *rail in @[_leftRail,_rightRail]){
+        rail.translatesAutoresizingMaskIntoConstraints=NO;[self.view addSubview:rail];
+        [NSLayoutConstraint activateConstraints:@[
+            [rail.topAnchor constraintEqualToAnchor:safe.topAnchor constant:8],
+            [rail.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-8]]];
+    }
+    [_leftRail.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:8].active=YES;
+    [_rightRail.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-8].active=YES;
     NSNotificationCenter *nc=NSNotificationCenter.defaultCenter;
     [nc addObserver:self selector:@selector(controllerChanged:) name:GCControllerDidConnectNotification object:nil];
     [nc addObserver:self selector:@selector(controllerChanged:) name:GCControllerDidDisconnectNotification object:nil];
@@ -260,12 +275,11 @@ void port_host_audio_stop(void){[sessionOwner audioStop];}
     CGRect left=[_leftRail convertRect:_leftRail.bounds toView:self.view];
     CGRect right=[_rightRail convertRect:_rightRail.bounds toView:self.view];
     CGRect safe=CGRectInset(self.view.safeAreaLayoutGuide.layoutFrame,-0.5,-0.5);
-    BOOL valid=CGRectContainsRect(safe,canvas)&&CGRectContainsRect(safe,left)&&CGRectContainsRect(safe,right)
-        &&!CGRectIntersectsRect(canvas,left)&&!CGRectIntersectsRect(canvas,right);
-    CGFloat w=fmin(canvas.size.width,canvas.size.height*4.0/3.0),h=w*3.0/4.0;
+    BOOL valid=CGRectEqualToRect(canvas,self.view.bounds)&&CGRectContainsRect(safe,left)&&CGRectContainsRect(safe,right);
+    CGFloat w=canvas.size.width,h=canvas.size.height;
     NSDictionary *report=@{@"valid":@(valid),@"controllerPolicy":@(_smokePolicyValid),@"bounds":@[@(self.view.bounds.size.width),@(self.view.bounds.size.height)],
         @"viewport":@[@(canvas.origin.x+(canvas.size.width-w)/2),@(canvas.origin.y+(canvas.size.height-h)/2),@(w),@(h)],
-        @"drawable":@[@(self.metalView.drawableSize.width),@(self.metalView.drawableSize.height)],@"scale":@(scale)};
+        @"drawable":@[@(self.metalView.drawableSize.width),@(self.metalView.drawableSize.height)],@"scale":@(scale),@"projectionWidth":@(port_wide_window(496,w,h))};
     NSURL *dir=[NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].firstObject;
     NSData *json=[NSJSONSerialization dataWithJSONObject:report options:0 error:nil];
     [json writeToURL:[dir URLByAppendingPathComponent:@"port-layout-smoke.json"] atomically:YES];

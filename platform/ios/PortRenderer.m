@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "port_display.h"
 
 typedef struct { simd_float4 patch; simd_uint4 meta; uint32_t lut[16]; } PortMaterial;
 typedef struct { simd_float4 viewport, focalCenter; } PortProjection;
@@ -179,8 +180,7 @@ static NSData *tilePixels(const uint32_t *pixels,BOOL opaque) {
     dispatch_semaphore_t semaphore=_inFlight;
     [cb addCompletedHandler:^(id<MTLCommandBuffer> result){dispatch_semaphore_signal(semaphore);}];
     double width=view.drawableSize.width,height=view.drawableSize.height;
-    double w=fmin(width,height*4/3), h=w*3/4;
-    MTLViewport vp={(width-w)/2,(height-h)/2,w,h,0,1};
+    MTLViewport vp={0,0,width,height,0,1};
     pass.depthAttachment.storeAction=MTLStoreActionStore;
     pass.stencilAttachment.storeAction=MTLStoreActionStore;
     pass.colorAttachments[0].storeAction=MTLStoreActionStore;
@@ -200,7 +200,12 @@ static NSData *tilePixels(const uint32_t *pixels,BOOL opaque) {
         vertices=[view.device newBufferWithBytes:f.vertices.bytes length:f.vertices.length options:MTLResourceStorageModeShared];
         materials=[view.device newBufferWithBytes:f.materials.bytes length:f.materials.length options:MTLResourceStorageModeShared];
     }
-    PortProjection p={0};if(f){p.viewport=f.viewport;p.focalCenter=f.focalCenter;}
+    PortProjection p={0};if(f){
+        p.viewport=f.viewport;p.focalCenter=f.focalCenter;
+        float original=p.viewport.z-p.viewport.x;
+        float wide=port_wide_window(original,width,height);
+        p.viewport.z=p.viewport.x+wide;p.focalCenter.x+=(wide-original)/2;
+    }
     if(vertices && materials) {
         [e setRenderPipelineState:_geoPipeline];[e setVertexBuffer:vertices offset:0 atIndex:0];[e setVertexBytes:&p length:sizeof(p) atIndex:2];
         [e setFragmentBuffer:materials offset:0 atIndex:1];[e setFragmentTexture:_sheet[0] atIndex:0];[e setFragmentTexture:_sheet[1] atIndex:1];
