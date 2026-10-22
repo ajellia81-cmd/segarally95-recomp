@@ -2,7 +2,6 @@
 
 Codex Cloud의 `segarally95-recomp` 환경 게시 완료를 설정 UI에서 확인했습니다.
 공개 범위는 `나만`, 연결 저장소는 `ajellia81-cmd/segarally95-recomp`뿐입니다.
-설정 채팅: https://chatgpt.com/local/01a15e75-be36-76a5-872e-33dc2fbf6033
 
 게시된 파일시스템/설치 스크립트의 기준은 최초 준비 커밋
 `17e23580dc436346c4173712840cbe7a7891b283`입니다. 최신 이식 코드는 포크의
