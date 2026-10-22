@@ -1,9 +1,17 @@
 #include "model2_snd_rom.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+static char last_error[512];
+const char *model2_snd_rom_error(void) { return last_error; }
+static void file_error(const char *path, const char *operation, int code)
+{
+    const char *name = strrchr(path, '/');
+    snprintf(last_error, sizeof(last_error), "%s: %s (code=%d)", name ? name+1 : path, operation, code);
+}
 static u8 *g_68k;
 static u8 *g_samples;
 
@@ -14,16 +22,17 @@ static int read_file(const char *path, u8 **out, size_t want)
     size_t n;
 
     fp = fopen(path, "rb");
-    if (!fp)
-        return -1;
+    if (!fp) { file_error(path, "open", errno); return -1; }
     buf = (u8 *)malloc(want);
     if (!buf) {
+        file_error(path, "allocate", errno);
         fclose(fp);
         return -1;
     }
     n = fread(buf, 1, want, fp);
     fclose(fp);
     if (n != want) {
+        file_error(path, "short read", (int)n);
         free(buf);
         return -1;
     }
@@ -47,21 +56,22 @@ static int try_path(char *dst, size_t dst_sz, const char *dir, const char *name)
 {
     FILE *fp;
 
-    snprintf(dst, dst_sz, "%s/%s", dir, name);
+    int n = snprintf(dst, dst_sz, "%s/%s", dir, name);
+    if (n < 0 || (size_t)n >= dst_sz) { file_error(name, "path too long", 0); return -1; }
     fp = fopen(dst, "rb");
-    if (!fp)
-        return -1;
+    if (!fp) { file_error(dst, "open", errno); return -1; }
     fclose(fp);
     return 0;
 }
 
 int model2_snd_rom_load(const char *rom_dir)
 {
-    char path[512];
+    char path[4096];
     const char *dir = rom_dir && rom_dir[0] ? rom_dir : "../ROMS/srallyc-b";
     u8 *s0 = NULL, *s1 = NULL, *s2 = NULL, *s3 = NULL;
 
     model2_snd_rom_unload();
+    last_error[0] = 0;
 
     if (try_path(path, sizeof(path), dir, "epr-17890a.30") != 0
         && try_path(path, sizeof(path), dir, "epr-17890.30") != 0)
@@ -88,8 +98,7 @@ int model2_snd_rom_load(const char *rom_dir)
         goto fail;
 
     g_samples = (u8 *)malloc(MODEL2_SND_SAMPLE_ROM_SIZE);
-    if (!g_samples)
-        goto fail;
+    if (!g_samples) { file_error("SCSP samples", "allocate", errno); goto fail; }
     memcpy(g_samples + 0x000000u, s0, 0x200000u);
     memcpy(g_samples + 0x200000u, s1, 0x200000u);
     memcpy(g_samples + 0x400000u, s2, 0x200000u);
@@ -100,6 +109,7 @@ int model2_snd_rom_load(const char *rom_dir)
     free(s1);
     free(s2);
     free(s3);
+    last_error[0] = 0;
     return 0;
 
 fail:

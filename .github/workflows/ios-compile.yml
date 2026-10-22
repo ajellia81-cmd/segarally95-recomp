@@ -42,16 +42,16 @@ jobs:
       - name: Package unsigned personal IPA
         if: matrix.sdk == 'iphoneos'
         run: |
-          bash scripts/package-unsigned-ipa.sh --create build/ios-iphoneos/SegaRallyIOS.app build/SegaRallyChampionship-v0.2-unsigned.ipa
-          shasum -a 256 build/SegaRallyChampionship-v0.2-unsigned.ipa > build/SegaRallyChampionship-v0.2-unsigned.ipa.sha256
+          bash scripts/package-unsigned-ipa.sh --create build/ios-iphoneos/SegaRallyIOS.app build/SegaRallyChampionship-v0.2.1-unsigned.ipa
+          shasum -a 256 build/SegaRallyChampionship-v0.2.1-unsigned.ipa > build/SegaRallyChampionship-v0.2.1-unsigned.ipa.sha256
       - name: Save personal IPA for download
         if: matrix.sdk == 'iphoneos'
         uses: actions/upload-artifact@v4
         with:
-          name: SegaRallyChampionship-v0.2-unsigned
+          name: SegaRallyChampionship-v0.2.1-unsigned
           path: |
-            build/SegaRallyChampionship-v0.2-unsigned.ipa
-            build/SegaRallyChampionship-v0.2-unsigned.ipa.sha256
+            build/SegaRallyChampionship-v0.2.1-unsigned.ipa
+            build/SegaRallyChampionship-v0.2.1-unsigned.ipa.sha256
           if-no-files-found: error
           retention-days: 3
       # No ROMs, Apple signing, archive/export or public release.

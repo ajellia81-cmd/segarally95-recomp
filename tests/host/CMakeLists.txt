@@ -44,3 +44,10 @@ target_include_directories(rom_import_driver PRIVATE
   "${REPO_ROOT}/platform/ios" "${REPO_ROOT}/include" "${REPO_ROOT}/lib/model2/include" "${REPO_ROOT}/lib/model2/host")
 target_link_libraries(rom_import_driver PRIVATE ZLIB::ZLIB)
 add_test(NAME zip_rom_preparation COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_LIST_DIR}/test_rom_zip.py" $<TARGET_FILE:rom_import_driver>)
+add_executable(startup_probe startup_probe.c
+  "${REPO_ROOT}/lib/model2/host/model2_rom_check.c"
+  "${REPO_ROOT}/lib/model2/snd/model2_snd_rom.c")
+target_include_directories(startup_probe PRIVATE
+  "${REPO_ROOT}/lib/model2/include" "${REPO_ROOT}/lib/model2/host"
+  "${REPO_ROOT}/lib/model2/snd/include")
+add_test(NAME native_startup_paths COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_LIST_DIR}/test_startup_paths.py" $<TARGET_FILE:startup_probe>)

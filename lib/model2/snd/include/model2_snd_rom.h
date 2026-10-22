@@ -12,6 +12,7 @@ extern "C" {
 #define MODEL2_SND_SOUNDRAM_SIZE    0x80000u
 
 int model2_snd_rom_load(const char *rom_dir);
+const char *model2_snd_rom_error(void);
 void model2_snd_rom_unload(void);
 int model2_snd_rom_loaded(void);
 

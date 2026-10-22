@@ -9,6 +9,7 @@
 #ifndef MODEL2_ROM_H
 #define MODEL2_ROM_H
 
+#include <stddef.h>
 #include "i960_lift.h"
 #include "model2_memory.h"
 
@@ -63,6 +64,8 @@ int model2_rom_load_default(void);
 
 /* Require the MAME srallycb files (present, size, CRC32). 0 ok, -1 on stderr. */
 int model2_romset_verify(void);
+/* Explicit app directory; first actionable failure is copied into error. */
+int model2_romset_verify_at(const char *dir, char *error, size_t capacity);
 typedef struct {
     const char *name,*alias;
     unsigned size,crc;

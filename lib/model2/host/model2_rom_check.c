@@ -12,9 +12,33 @@
 #include "model2_rom.h"
 #include "model2_rom_dir.h"
 
+#include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+
+static char explicit_directory[4096];
+int model2_set_rom_directory(const char *dir)
+{
+    if (!dir) { explicit_directory[0] = 0; return 0; }
+    size_t n = strlen(dir);
+    if (!n || n >= sizeof(explicit_directory)) return -1;
+    memcpy(explicit_directory, dir, n + 1);
+    return 0;
+}
+const char *model2_explicit_rom_directory(void)
+{
+    return explicit_directory[0] ? explicit_directory : NULL;
+}
+static void first_error(char *error, size_t capacity, const char *format, ...)
+{
+    if (!error || !capacity || error[0]) return;
+    va_list args;
+    va_start(args, format);
+    vsnprintf(error, capacity, format, args);
+    va_end(args);
+}
 
 static const model2_romset_entry_t k_roms[] = {
     /* maincpu */
@@ -100,14 +124,19 @@ static int path_join(char *dst, size_t dst_sz, const char *dir, const char *name
     return (n < 0 || (size_t)n >= dst_sz) ? -1 : 0;
 }
 
-int model2_romset_verify(void)
+int model2_romset_verify_at(const char *dir, char *error, size_t capacity)
 {
-    const char *dir = model2_resolve_rom_dir();
     struct stat st;
     unsigned i;
     int bad = 0;
 
+    if (error && capacity) error[0] = 0;
+    if (!dir || !*dir) {
+        first_error(error, capacity, "ROM directory is empty");
+        return -1;
+    }
     if (stat(dir, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        first_error(error, capacity, "ROM directory unavailable (errno=%d)", errno);
         fprintf(stderr,
                 "segamod2: ROM directory not found: %s\n"
                 "  Place a MAME srallycb set there (see ROMS/README.md),\n"
@@ -118,12 +147,13 @@ int model2_romset_verify(void)
 
     for (i = 0; i < sizeof(k_roms) / sizeof(k_roms[0]); i++) {
         const model2_romset_entry_t *rom = &k_roms[i];
-        char path[768];
+        char path[4096];
         const char *used = rom->name;
         unsigned size = 0, crc = 0;
 
         if (path_join(path, sizeof(path), dir, rom->name) != 0) {
             fprintf(stderr, "segamod2: ROM path too long: %s/%s\n", dir, rom->name);
+            first_error(error, capacity, "ROM path too long: %s", rom->name);
             bad = 1;
             continue;
         }
@@ -137,6 +167,7 @@ int model2_romset_verify(void)
                 else
                     fprintf(stderr, "segamod2: missing ROM %s in %s\n",
                             rom->name, dir);
+                first_error(error, capacity, "Cannot read %s (errno=%d)", rom->name, errno);
                 bad = 1;
                 continue;
             }
@@ -144,6 +175,8 @@ int model2_romset_verify(void)
         }
 
         if (size != rom->size || crc != rom->crc) {
+            first_error(error, capacity, "%s: size=%u CRC=%08x; expected %u/%08x",
+                        used, size, crc, rom->size, rom->crc);
             fprintf(stderr,
                     "segamod2: ROM checksum mismatch %s\n"
                     "  got size %u crc %08x, expected size %u crc %08x (MAME srallycb)\n",
@@ -160,4 +193,9 @@ int model2_romset_verify(void)
         return -1;
     }
     return 0;
+}
+
+int model2_romset_verify(void)
+{
+    return model2_romset_verify_at(model2_resolve_rom_dir(), NULL, 0);
 }

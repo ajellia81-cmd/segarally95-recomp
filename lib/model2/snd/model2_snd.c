@@ -25,6 +25,8 @@
 /* SCSP 22.5792 MHz / 2 = 11.2896 MHz 68k → 256 cycles per 44.1 kHz sample.
  * Copy pump @ 0x602A46 waits 10× ROL.L #8 (24 cyc) for $409 CA. */
 
+static char startup_error[512];
+const char *model2_snd_last_error(void) { return startup_error; }
 static u8 g_midi[MIDI_CAP];
 static unsigned g_midi_total;
 static u8 g_last_command;
@@ -394,7 +396,9 @@ static int thread_start(void)
     g_pkt_n = 0;
     g_uart_r = g_uart_w = g_uart_n = 0;
     g_pcm_r = g_pcm_n = 0;
-    if (pthread_create(&g_thr, NULL, board_thread, NULL) != 0) {
+    int thread_result = pthread_create(&g_thr, NULL, board_thread, NULL);
+    if (thread_result != 0) {
+        snprintf(startup_error, sizeof(startup_error), "Sound worker: %s (%d)", strerror(thread_result), thread_result);
         fprintf(stderr, "lift: sound thread create failed\n");
         return -1;
     }
@@ -594,8 +598,11 @@ int model2_snd_load_roms(const char *rom_dir)
     if (!dir || !*dir)
         dir = model2_resolve_rom_dir();
     thread_stop();
-    if (model2_snd_rom_load(dir) != 0)
+    startup_error[0] = 0;
+    if (model2_snd_rom_load(dir) != 0) {
+        snprintf(startup_error, sizeof(startup_error), "%s", model2_snd_rom_error());
         return -1;
+    }
     lift_status("lift: sound ROMs loaded from %s\n", dir);
     model2_snd_scsp_reset();
     model2_snd_m68k_reset();

@@ -5,6 +5,8 @@
 #import "PortROMPreparation.h"
 #include "i960_host.h"
 #include "model2_rom.h"
+#include "model2_rom_dir.h"
+#include <errno.h>
 #include "model2_nvram.h"
 #include "model2_snd.h"
 #include "sys24_viewer.h"
@@ -120,13 +122,44 @@ static PortSession *sessionOwner;
                 dispatch_async(dispatch_get_main_queue(),^{if(self.parked)self.parked();});return;}
             NSString *cpu=[ready URLByAppendingPathComponent:@"maincpu_deinterleaved.bin"].path;
             NSString *data=[ready URLByAppendingPathComponent:@"main_data_deinterleaved.bin"].path;
+            // Embedded hosts can virtualize getenv/setenv. All lazy board loaders
+            // must use the same owned path as verification and BIN/sound loading.
+            int directoryResult=model2_set_rom_directory(ready.fileSystemRepresentation);
             setenv("SEGAMOD2_ROM_DIR",ready.fileSystemRepresentation,1);
             setenv("I960_HOST_NVRAM",save.fileSystemRepresentation,1);
             setenv("I960_HOST_ASPECT","4:3",1);
             [self status:@"코어 초기화 중…"];
+            NSMutableString *diagnostics=[NSMutableString stringWithFormat:@"Sega Rally Championship %@ (%@)\nPrepared directory: %@\nExplicit directory result: %d\n",
+                NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"],
+                NSBundle.mainBundle.infoDictionary[@"CFBundleVersion"],ready.path,directoryResult];
+            for(NSString *path in @[cpu,data]) {
+                struct stat st;int rc=stat(path.fileSystemRepresentation,&st);int code=rc?errno:0;
+                [diagnostics appendFormat:@"%@: stat=%d errno=%d size=%lld\n",path.lastPathComponent,rc,code,rc?-1LL:(long long)st.st_size];
+            }
+            char validation[512]={0};
+            NSString *failure=nil,*stage=@"경로 설정";
+            if(directoryResult)failure=@"준비 디렉터리 경로를 설정할 수 없습니다";
+            if(!failure) {
+                stage=@"ROM 검증";
+                int rc=model2_romset_verify_at(ready.fileSystemRepresentation,validation,sizeof(validation));
+                [diagnostics appendFormat:@"ROM verification: %d %s\n",rc,validation];
+                if(rc)failure=[NSString stringWithUTF8String:validation];
+            }
+            if(!failure) {
+                stage=@"BIN 로딩";
+                errno=0;int rc=i960_host_load_extracted(cpu.fileSystemRepresentation,data.fileSystemRepresentation);int code=errno;
+                [diagnostics appendFormat:@"BIN loading: %d errno=%d\n",rc,code];
+                if(rc)failure=[NSString stringWithFormat:@"maincpu/main_data BIN 읽기 실패 (errno=%d)",code];
+            }
+            if(!failure) {
+                stage=@"사운드/코어 초기화";
+                int rc=i960_host_reset_checked(ready.fileSystemRepresentation);
+                [diagnostics appendFormat:@"Core reset: %d %s\n",rc,model2_snd_last_error()];
+                if(rc)failure=[NSString stringWithUTF8String:model2_snd_last_error()];
+            }
+            [diagnostics writeToURL:[documents URLByAppendingPathComponent:@"startup-diagnostics.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
             int result=-1;
-            if(model2_romset_verify()==0 && i960_host_load_extracted(cpu.fileSystemRepresentation,data.fileSystemRepresentation)==0 &&
-               i960_host_reset_checked(ready.fileSystemRepresentation)==0) {
+            if(!failure) {
                 track_viewer_opts_t opts={0};opts.viewer_boot=1;opts.live_view=1;opts.aspect="4:3";
                 [self status:@"실행 중 — 실기기 검증 전"];
                 result=i960_lift_boot_screen_run(&opts);
@@ -134,7 +167,7 @@ static PortSession *sessionOwner;
                 if(result!=0)sys24_viewer_shutdown();
             } else {
                 model2_snd_reset();
-                [self status:@"게임 파일 검증 또는 코어 초기화 실패. 앱을 다시 열기 전에 README의 파일 목록을 확인하세요."];
+                [self reportError:[NSString stringWithFormat:@"시작 실패 [%@]\n%@\n파일 앱의 startup-diagnostics.txt에 기록했습니다.",stage,failure.length?failure:@"오류 상세 없음"]];
             }
             [_gate lock];_running=NO;BOOL hadError=_hadError;[_gate unlock];
             [self audioStop];
@@ -186,7 +219,14 @@ void port_host_audio_stop(void){[sessionOwner audioStop];}
     __weak PortViewController *weak=self;
     _status=[UILabel new];_status.textColor=UIColor.whiteColor;_status.numberOfLines=3;_status.font=[UIFont systemFontOfSize:13];
     _status.text=@"SEGA RALLY\nROMs에 ZIP을 넣고 시작하세요";
-    sessionOwner.statusChanged=^(NSString *s){PortViewController *strong=weak;if(strong)strong->_status.text=s;};
+    sessionOwner.statusChanged=^(NSString *s){
+        PortViewController *strong=weak;if(!strong)return;strong->_status.text=s;
+        if([s hasPrefix:@"시작 실패 ["]&&!strong.presentedViewController) {
+            UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"시작 오류" message:s preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"확인" style:UIAlertActionStyleDefault handler:nil]];
+            [strong presentViewController:alert animated:YES completion:nil];
+        }
+    };
     id<MTLDevice> device=MTLCreateSystemDefaultDevice();
     if(device) {
         self.metalView=[[MTKView alloc] initWithFrame:CGRectZero device:device];
