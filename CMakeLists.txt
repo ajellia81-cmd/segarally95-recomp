@@ -231,7 +231,7 @@ file(GLOB LIFT_BOOT CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/boot/*.c)
 file(GLOB LIFT_IRQ  CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/irq/*.c)
 
 if(SEGAMOD2_IOS)
-  list(FILTER LIFT_HOST EXCLUDE REGEX "/(sys24_viewer|sys24_viewer_record|model2_snd_lift)\.c$")
+  list(FILTER LIFT_HOST EXCLUDE REGEX "/(sys24_viewer|sys24_viewer_record|model2_snd_lift)[.]c$")
   add_library(segamod2_core STATIC ${LIFT_HOST_RUNTIME} ${LIFT_GAME_GLUE}
     ${LIFT_GAME} ${LIFT_HOST} ${LIFT_LIBC} ${LIFT_BOOT} ${LIFT_IRQ}
     platform/ios/viewer_ios.c platform/ios/port_input.c)

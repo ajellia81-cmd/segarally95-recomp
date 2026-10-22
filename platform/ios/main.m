@@ -36,6 +36,7 @@ static PortSession *sessionOwner;
     NSCondition *_gate;
     BOOL _active,_interrupted,_paused,_stop,_running,_everStarted;
     port_input_t _touch,_pad;
+    unsigned _gear;
     PortFrame *_frame;
 }
 - (instancetype)init {
@@ -44,15 +45,15 @@ static PortSession *sessionOwner;
 - (void)status:(NSString *)text {
     dispatch_async(dispatch_get_main_queue(),^{if(self.statusChanged)self.statusChanged(text);});
 }
-- (void)setTouch:(port_input_t)input { [_gate lock];if(_active&&!_interrupted&&!_paused)_touch=input;[_gate unlock]; }
-- (void)setPad:(port_input_t)input { [_gate lock];if(_active&&!_interrupted&&!_paused)_pad=input;[_gate unlock]; }
+- (void)setTouch:(port_input_t)input { [_gate lock];if(_active&&!_interrupted&&!_paused){if(input.gear!=_touch.gear)_gear=input.gear;_touch=input;}[_gate unlock]; }
+- (void)setPad:(port_input_t)input { [_gate lock];if(_active&&!_interrupted&&!_paused){if(input.gear!=_pad.gear)_gear=input.gear;_pad=input;}[_gate unlock]; }
 - (void)updateAudio {
     [_gate lock];BOOL play=_running&&_active&&!_interrupted&&!_paused&&!_stop;[_gate unlock];
     if(play){NSError *error=nil;if(![self.audio start:&error])[self status:[@"오디오: " stringByAppendingString:error.localizedDescription?:@"시작 실패"]];}
     else [self.audio stop];
 }
 - (void)changeGate {
-    memset(&_touch,0,sizeof(_touch));memset(&_pad,0,sizeof(_pad));[_gate broadcast];
+    memset(&_touch,0,sizeof(_touch));memset(&_pad,0,sizeof(_pad));_gear=0;[_gate broadcast];
 }
 - (void)setActive:(BOOL)active { [_gate lock];_active=active;[self changeGate];[_gate unlock];[self updateAudio]; }
 - (void)setInterrupted:(BOOL)value { [_gate lock];_interrupted=value;[self changeGate];[_gate unlock];[self updateAudio]; }
@@ -77,9 +78,9 @@ static PortSession *sessionOwner;
         if(!ending)model2_snd_set_paused(0);
         [_gate lock];
     }
-    BOOL end=_stop;port_input_t a=_touch,b=_pad;[_gate unlock];
+    BOOL end=_stop;port_input_t a=_touch,b=_pad;unsigned gear=_gear;[_gate unlock];
     if(end){port_input_release();return 1;}
-    port_input_t mix={fabsf(a.steer)>0?a.steer:b.steer,fmaxf(a.throttle,b.throttle),fmaxf(a.brake,b.brake),a.coin||b.coin,a.start||b.start,a.view||b.view,b.gear?b.gear:a.gear};
+    port_input_t mix={fabsf(a.steer)>0?a.steer:b.steer,fmaxf(a.throttle,b.throttle),fmaxf(a.brake,b.brake),a.coin||b.coin,a.start||b.start,a.view||b.view,gear};
     port_input_apply(&mix);return 0;
 }
 - (void)start {
@@ -146,6 +147,7 @@ void port_host_audio_stop(void){[sessionOwner audioStop];}
     UILabel *_status;
     port_input_t _touch,_pad;
     GCController *_controller;
+    BOOL _leftHeld,_rightHeld;
 }
 - (UIButton *)button:(NSString *)name tag:(NSInteger)tag {
     UIButton *b=[UIButton buttonWithType:UIButtonTypeSystem];b.tag=tag;
@@ -174,7 +176,7 @@ void port_host_audio_stop(void){[sessionOwner audioStop];}
     top.spacing=12;top.translatesAutoresizingMaskIntoConstraints=NO;[self.view addSubview:top];
     NSMutableArray *controls=[NSMutableArray array];
     NSArray *names=@[@"◀",@"▶",@"가속",@"브레이크",@"코인",@"START",@"시점",@"기어"];
-    for(NSInteger i=0;i<names.count;i++)[controls addObject:[self button:names[i] tag:i]];
+    for(NSUInteger i=0;i<names.count;i++)[controls addObject:[self button:names[i] tag:i]];
     UIStackView *bottom=[[UIStackView alloc] initWithArrangedSubviews:controls];bottom.spacing=6;bottom.distribution=UIStackViewDistributionFillEqually;bottom.translatesAutoresizingMaskIntoConstraints=NO;[self.view addSubview:bottom];
     [NSLayoutConstraint activateConstraints:@[[top.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8],[top.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:10],[top.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-10],[bottom.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:10],[bottom.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-10],[bottom.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8],[bottom.heightAnchor constraintEqualToConstant:52]]];
     NSNotificationCenter *nc=NSNotificationCenter.defaultCenter;
@@ -185,16 +187,18 @@ void port_host_audio_stop(void){[sessionOwner audioStop];}
     [nc addObserver:self selector:@selector(inactive:) name:UIApplicationWillResignActiveNotification object:nil];
     [self controllerChanged:nil];
 }
-- (void)inactive:(NSNotification *)n { memset(&_touch,0,sizeof(_touch));memset(&_pad,0,sizeof(_pad)); }
+- (void)inactive:(NSNotification *)n { memset(&_touch,0,sizeof(_touch));memset(&_pad,0,sizeof(_pad));_leftHeld=_rightHeld=NO; }
 - (void)down:(UIButton *)b {
     if(b.tag==20){if(_renderer)[sessionOwner start];return;}
-    if(b.tag==21){[sessionOwner togglePause];memset(&_touch,0,sizeof(_touch));memset(&_pad,0,sizeof(_pad));return;}
+    if(b.tag==21){[sessionOwner togglePause];[self inactive:nil];return;}
     if(b.tag==22){[sessionOwner stop];return;}
-    switch(b.tag){case 0:_touch.steer=-1;break;case 1:_touch.steer=1;break;case 2:_touch.throttle=1;break;case 3:_touch.brake=1;break;case 4:_touch.coin=1;break;case 5:_touch.start=1;break;case 6:_touch.view=1;break;case 7:_touch.gear=_touch.gear%4+1;break;}
+    switch(b.tag){case 0:_leftHeld=YES;break;case 1:_rightHeld=YES;break;case 2:_touch.throttle=1;break;case 3:_touch.brake=1;break;case 4:_touch.coin=1;break;case 5:_touch.start=1;break;case 6:_touch.view=1;break;case 7:_touch.gear=_touch.gear%4+1;break;}
+    _touch.steer=(float)_rightHeld-(float)_leftHeld;
     [sessionOwner setTouch:_touch];
 }
 - (void)up:(UIButton *)b {
-    switch(b.tag){case 0:case 1:_touch.steer=0;break;case 2:_touch.throttle=0;break;case 3:_touch.brake=0;break;case 4:_touch.coin=0;break;case 5:_touch.start=0;break;case 6:_touch.view=0;break;}
+    switch(b.tag){case 0:_leftHeld=NO;break;case 1:_rightHeld=NO;break;case 2:_touch.throttle=0;break;case 3:_touch.brake=0;break;case 4:_touch.coin=0;break;case 5:_touch.start=0;break;case 6:_touch.view=0;break;}
+    _touch.steer=(float)_rightHeld-(float)_leftHeld;
     [sessionOwner setTouch:_touch];
 }
 - (void)controllerChanged:(NSNotification *)note {

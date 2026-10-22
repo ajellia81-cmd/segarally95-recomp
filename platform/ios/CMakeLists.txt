@@ -5,7 +5,7 @@ endif()
 add_executable(SegaRallyIOS MACOSX_BUNDLE main.m PortRenderer.m PortAudio.m)
 target_compile_options(SegaRallyIOS PRIVATE -fobjc-arc)
 target_link_libraries(SegaRallyIOS PRIVATE segamod2_core
-  "-framework UIKit" "-framework Metal" "-framework MetalKit"
+  "-framework UIKit" "-framework CoreGraphics" "-framework Metal" "-framework MetalKit"
   "-framework AVFoundation" "-framework GameController")
 set_target_properties(SegaRallyIOS PROPERTIES
   MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
