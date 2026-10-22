@@ -141,3 +141,34 @@ CI https://github.com/ajellia81-cmd/segarally95-recomp/actions/runs/39704629334 
 - 다운로드 후 패키지 CRC, CI 체크섬, arm64 Mach-O 및 앱 구성 검사 성공.
 - Apple 서명·ROM 자산·App Store 배포·공개 Release 없음. 개인용 다운로드 아티팩트만 보관.
 - 실제 iPhone 18 Pro Max와 게임 실행은 미검증. 상세 정보 및 SHA-256은 IPA_BUILD.md 참조.
+
+
+## 2026-10-22: 0.2 ZIP 준비·전체 화면 와이드·앱 표시 — 최종 통과
+
+검증/IPA 소스: `b9c6bfe552d1635041baa9b6e7a048c144f251fc`.
+CI https://github.com/ajellia81-cmd/segarally95-recomp/actions/runs/39731770134 — 세 작업 전체 성공.
+이후 문서 전용 커밋은 빌드된 소스/검사 코드를 바꾸지 않습니다.
+
+| 검사 | 확인 결과 |
+|---|---|
+| Linux 전체 lift-check | 컴파일·링크 성공, 기존 경고 있음 |
+| host 계약 테스트 | 5/5 통과: 로더, 루프, 입력/와이드 비례, 원자적 NVRAM, 합성 ZIP 준비 |
+| ZIP 오류/변환 | stored/deflate, merged B 하위 경로, 정확한 인터리브; 누락/CRC/헤더/잘림/탈출/심볼릭 링크/크기 오류 거부 |
+| 사용자 제공 B ZIP | 별도 개인 scratch에서 필수 19파일 CRC·크기와 가져오기 성공; 생성된 BIN 2개의 SHA-256이 기존 canonical 변환과 일치. 게임 실행 없음 |
+| Apple SDK | arm64 iPhoneOS Release 및 Simulator Debug 앱/Metal 컴파일·링크 성공 |
+| 시뮬레이터 | iPhone 17 Pro Max 앱 설치·실행 및 프로세스 생존, 합성 단색/텍스처 픽셀 통과 |
+| 전체 화면/입력 정책 | 1320×2868 캡처, drawable 2868×1320, scale=3; 화면 전체 canvas, 안전 영역 조작부, 터치 숨김/복원 정책 통과 |
+| IPA | 패키징 검사/생성 성공, 다운로드 후 CRC·CI 체크섬·arm64·iPhoneOS·0.2(2)·앱 이름·아이콘/metallib 확인 |
+| 제외 자산 | IPA에 ROM/BIN/ZIP/서명 자산 없음; ROM/파생 파일의 git/CI 업로드 없음 |
+
+앱 이름은 Sega Rally Championship, 아이콘은 사용자 제공 그림을 흰 배경으로 처리한
+1024×1024 원본에서 Xcode가 생성했습니다. 3D 호스트 투영 창을 넓히며 세로 시야/물체
+픽셀 비례를 유지합니다. 2D 화면은 전체 캔버스에 맞춥니다. 진동/햅틱은 포함하지 않습니다.
+
+IPA: `SegaRallyChampionship-v0.2-unsigned.ipa`, 1,781,150 bytes.
+SHA-256: `b61234ba43c2df28388179ebfacda69462b2cb1d71bca540b6a44421cbb1004e`.
+개인 서명 후 설치해야 하며 App Store/공개 Release 게시를 하지 않았습니다.
+
+실제 iPhone 18 Pro Max 설치, 실제 ROM으로 앱 부팅/플레이, 와이드 외곽 오브젝트 표시,
+BGM/효과음, Bluetooth/USB/Backbone 연결, 백그라운드 복귀 및 장시간 성능은 미검증입니다.
+합성 시뮬레이터/host 테스트는 실제 게임/기기 검증을 대신하지 않습니다.

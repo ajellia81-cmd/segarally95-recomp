@@ -16,12 +16,14 @@ Codex Cloud의 `segarally95-recomp` 환경 게시 완료를 설정 UI에서 확�
 ## 검증 역할
 
 - Linux: `bash .codex/setup.sh`로 실행 없는 `lift-check` 컴파일.
-- `tests/host`: ROM 없는 로더·루프·입력·NVRAM 계약 테스트.
+- `tests/host`: ROM 없는 로더·루프·입력/와이드 비례·NVRAM·합성 ZIP 계약 테스트.
 - GitHub Actions: Apple SDK로 iPhoneOS/시뮬레이터의 unsigned 앱 및 Metal 컴파일.
 - 시뮬레이터: ROM 없는 생성 픽셀/삼각형으로 앱 설치·실행 및 표시 검증.
 - IPA 패키징: 준비 단계에서는 `--check`만 실행했습니다. 2026-10-22 추가 승인 후
   미서명 Release IPA를 생성하고 다운로드용 아티팩트로 3일간 보관합니다.
   ROM/게임 데이터/Apple 서명/공개 Release는 포함하지 않습니다.
 
-ROM 취득·업로드·추출·배포, optional tools 복제, upstream 푸시는 수행하지 않습니다.
-Apple 서명 자산 및 기기의 사용자 게임 파일은 이 환경에 추가하지 않습니다.
+GitHub/CI에는 ROM 및 파생 데이터를 추가하지 않습니다. 사용자 제공 B ZIP은 별도
+개인 scratch에서 가져오기/변환만 검증했고 게임을 실행하지 않았습니다. 앱은 설치 후
+기기에 사용자가 복사한 ZIP을 비공개 캐시에서 준비합니다. 인터넷 ROM 취득·배포,
+optional tools 복제, upstream 푸시 및 Apple 서명 자산 추가는 수행하지 않습니다.
