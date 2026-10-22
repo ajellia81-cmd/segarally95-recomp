@@ -29,3 +29,8 @@ target_include_directories(test_port_input PRIVATE
   "${REPO_ROOT}/lib/model2/geo/include")
 target_link_libraries(test_port_input PRIVATE m)
 add_test(NAME native_input_mapping COMMAND test_port_input)
+add_executable(test_native_nvram test_native_nvram.c "${REPO_ROOT}/src/host/model2_nvram.c")
+target_compile_definitions(test_native_nvram PRIVATE SEGAMOD2_IOS _POSIX_C_SOURCE=200809L)
+target_include_directories(test_native_nvram PRIVATE
+  "${REPO_ROOT}/include" "${REPO_ROOT}/lib/model2/include" "${REPO_ROOT}/lib/model2/host")
+add_test(NAME native_atomic_nvram COMMAND test_native_nvram)

@@ -39,4 +39,5 @@ jobs:
       # No ROMs, signing, archive, export, upload or IPA distribution.
       - name: Run asset-free Metal smoke test
         if: matrix.sdk == 'iphonesimulator'
+        timeout-minutes: 10
         run: bash scripts/ios-simulator-smoke.sh build/ios-iphonesimulator

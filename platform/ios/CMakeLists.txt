@@ -2,6 +2,7 @@
 if(NOT TARGET segamod2_core)
   message(FATAL_ERROR "Configure the repository root with CMAKE_SYSTEM_NAME=iOS")
 endif()
+set(SEGAMOD2_BUNDLE_ID "local.personal.segarally95" CACHE STRING "Personal app bundle identifier")
 add_executable(SegaRallyIOS MACOSX_BUNDLE main.m PortRenderer.m PortAudio.m)
 target_compile_options(SegaRallyIOS PRIVATE -fobjc-arc)
 target_link_libraries(SegaRallyIOS PRIVATE segamod2_core
@@ -9,8 +10,8 @@ target_link_libraries(SegaRallyIOS PRIVATE segamod2_core
   "-framework AVFoundation" "-framework GameController")
 set_target_properties(SegaRallyIOS PROPERTIES
   MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
-  MACOSX_BUNDLE_GUI_IDENTIFIER "local.personal.segarally95"
-  XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "local.personal.segarally95"
+  MACOSX_BUNDLE_GUI_IDENTIFIER "${SEGAMOD2_BUNDLE_ID}"
+  XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${SEGAMOD2_BUNDLE_ID}"
   XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
   XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "15.0"
   XCODE_ATTRIBUTE_ENABLE_BITCODE "NO")

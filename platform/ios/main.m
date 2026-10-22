@@ -59,7 +59,7 @@ static PortSession *sessionOwner;
 }
 - (void)setActive:(BOOL)active { [_gate lock];_active=active;[self changeGate];[_gate unlock];[self updateAudio]; }
 - (void)setInterrupted:(BOOL)value { [_gate lock];_interrupted=value;[self changeGate];[_gate unlock];[self updateAudio]; }
-- (void)togglePause { [_gate lock];_paused=!_paused;_interrupted=NO;[self changeGate];BOOL p=_paused;[_gate unlock];[self status:p?@"일시정지":@"실행 중 — 실기기 검증 전"];[self updateAudio]; }
+- (void)togglePause { [_gate lock];_paused=_interrupted?NO:!_paused;_interrupted=NO;[self changeGate];BOOL p=_paused;[_gate unlock];[self status:p?@"일시정지":@"실행 중 — 실기기 검증 전"];[self updateAudio]; }
 - (void)stop { [_gate lock];_stop=YES;[self changeGate];[_gate unlock];[self.audio stop]; }
 - (PortFrame *)frame { [_gate lock];PortFrame *f=_frame;[_gate unlock];return f; }
 - (void)publish:(PortFrame *)frame { [_gate lock];_frame=frame;[_gate unlock]; }

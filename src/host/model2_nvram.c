@@ -202,7 +202,8 @@ int model2_nvram_load(const char *path)
 
     if (!path || !*path)
         path = nvram_default_path();
-    snprintf(g_nvram_path, sizeof(g_nvram_path), "%s", path);
+    if (path != g_nvram_path)
+        snprintf(g_nvram_path, sizeof(g_nvram_path), "%s", path);
 
     memset(&g_nvram, 0, sizeof(g_nvram));
     /* Sensible defaults matching game_option_flags_init / coin_option_defaults. */
@@ -432,7 +433,8 @@ int model2_nvram_save(const char *path)
     g_nvram.loaded = 1;
     g_nvram.have_settings = 1;
     g_nvram.dirty = 0;
-    snprintf(g_nvram_path, sizeof(g_nvram_path), "%s", path);
+    if (path != g_nvram_path)
+        snprintf(g_nvram_path, sizeof(g_nvram_path), "%s", path);
     lift_status("lift: nvram saved → %s (country=%s)\n", path,
                 country_name(g_nvram.country));
     return 0;
